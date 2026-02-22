@@ -113,3 +113,28 @@ Default wrappers use `rwkv7-1.5b`.
 - For small VRAM start with QLoRA NF4 profile and `MICRO_BSZ=1`.
 - Dataset for `prepare_binidx.sh` must be JSONL with one object per line.
 
+## Albatross inference
+
+There is a separate CLI wrapper for local RWKV inference via `BlinkDL/Albatross`:
+
+```bash
+python scripts/infer_albatross.py \
+  --model /home/egor/code/rwkv-finetune/models/base/rwkv7-g1-1.5b-20250429-ctx4096.pth \
+  --prompt "User: explain recursion in Python. Assistant:" \
+  --tokens 128 \
+  --batch 1 \
+  --auto-clone
+```
+
+Notes:
+
+- `--model` accepts either checkpoint prefix or `.pth` path.
+- First run compiles Albatross CUDA extension and can take time.
+- For `--batch > 1`, the same prompt is used for each sample.
+
+Shortcut wrapper:
+
+```bash
+ALBATROSS_MODEL=/home/egor/code/rwkv-finetune/models/base/rwkv7-g1-1.5b-20250429-ctx4096.pth \
+./scripts/run_albatross.sh --auto-clone --tokens 128
+```
