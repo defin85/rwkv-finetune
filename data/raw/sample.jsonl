@@ -1,0 +1,4 @@
+{"text":"Instruction: classify sentiment. Input: this product is amazing. Output: positive"}
+{"text":"Instruction: classify sentiment. Input: this product is terrible. Output: negative"}
+{"text":"Instruction: summarize. Input: RWKV is an RNN architecture trained in a GPT-like way. Output: RWKV combines RNN memory efficiency with GPT-style training."}
+
