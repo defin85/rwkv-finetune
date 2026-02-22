@@ -1,6 +1,7 @@
-# RWKV Finetune Workspace (WSL, no Docker)
+# RWKV Finetune Workspace for 1C:Enterprise (WSL, no Docker)
 
-This folder is a ready-to-run workspace for RWKV LoRA/QLoRA finetuning with `RWKV-PEFT` on Windows + WSL.
+This folder is a ready-to-run workspace for RWKV v7 LoRA/QLoRA finetuning with `RWKV-PEFT` on Windows + WSL.
+The primary goal is to finetune models for 1C:Enterprise development tasks with a programming-first focus.
 
 ## What is included
 
@@ -8,6 +9,7 @@ This folder is a ready-to-run workspace for RWKV LoRA/QLoRA finetuning with `RWK
 - Bootstrap script to install Python environment and training dependencies
 - Healthcheck script for GPU / CUDA / PyTorch / DeepSpeed / bitsandbytes
 - Data conversion script: `jsonl -> binidx` for RWKV training
+- Workflow oriented toward 1C:Enterprise programming datasets and coding prompts
 - Training wrappers for:
   - LoRA BF16
   - QLoRA NF4
@@ -112,6 +114,7 @@ Default wrappers use `rwkv7-1.5b`.
 - Scripts are aligned with current `RWKV-PEFT` CLI (`train.py`).
 - For small VRAM start with QLoRA NF4 profile and `MICRO_BSZ=1`.
 - Dataset for `prepare_binidx.sh` must be JSONL with one object per line.
+- Main dataset focus is 1C:Enterprise programming tasks (code generation, refactoring, explanation).
 
 ## Albatross inference
 

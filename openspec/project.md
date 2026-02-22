@@ -1,10 +1,10 @@
 # Project Context
 
 ## Purpose
-This repository is a reproducible local workspace for RWKV v7 finetuning on Windows + WSL2 without Docker.
+This repository is a reproducible local workspace for RWKV v7 finetuning focused on 1C:Enterprise programming tasks on Windows + WSL2 without Docker.
 It standardizes:
 - environment bootstrap;
-- dataset preparation (`jsonl -> binidx`);
+- dataset preparation (`jsonl -> binidx`) for code-centric instruction data;
 - LoRA/QLoRA training with RWKV-PEFT;
 - local RWKV inference via Albatross.
 
@@ -44,10 +44,10 @@ It standardizes:
 - Do not commit local/generated artifacts (`.venv`, `data/processed/*`, model checkpoints, `runs/*`, `logs/*`, `configs/workspace.env`).
 
 ## Domain Context
-- Primary domain: RWKV v7 finetuning with LoRA/QLoRA profiles (`lora-bf16`, `qlora-nf4`, `qlora-int8`).
+- Primary domain: RWKV v7 finetuning for 1C:Enterprise programming with LoRA/QLoRA profiles (`lora-bf16`, `qlora-nf4`, `qlora-int8`).
 - Base model checkpoint (`.pth`) is provided manually in `models/base/`.
 - Default wrappers target the `rwkv7-1.5b` model preset; additional presets exist for `rwkv7-0.4b` and `rwkv7-3b`.
-- Dataset expectation: one JSON object per line with a `text` field.
+- Dataset expectation: one JSON object per line with a `text` field containing 1C:Enterprise programming instructions/examples.
 - Training and inference flows are intentionally separate: training uses RWKV-PEFT, while inference uses BlinkDL/Albatross via `scripts/infer_albatross.py` and `scripts/run_albatross.sh`.
 
 ## Important Constraints
