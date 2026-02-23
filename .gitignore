@@ -25,3 +25,16 @@ runs/*
 logs/*
 !logs/.gitkeep
 
+orchestration/airflow/runtime/*
+!orchestration/airflow/runtime/db/
+!orchestration/airflow/runtime/logs/
+!orchestration/airflow/runtime/pids/
+!orchestration/airflow/runtime/audit/
+orchestration/airflow/runtime/db/*
+!orchestration/airflow/runtime/db/.gitkeep
+orchestration/airflow/runtime/logs/*
+!orchestration/airflow/runtime/logs/.gitkeep
+orchestration/airflow/runtime/pids/*
+!orchestration/airflow/runtime/pids/.gitkeep
+orchestration/airflow/runtime/audit/*
+!orchestration/airflow/runtime/audit/.gitkeep

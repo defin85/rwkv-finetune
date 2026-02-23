@@ -51,11 +51,16 @@ source "$VENV_DIR/bin/activate"
 python -m pip install --upgrade pip setuptools wheel
 
 if [ "$SKIP_TORCH_INSTALL" != "1" ]; then
-  python -m pip install torch torchvision torchaudio --index-url "$TORCH_INDEX_URL"
+  if ! python -m pip install torch --index-url "$TORCH_INDEX_URL"; then
+    echo "Torch install from $TORCH_INDEX_URL failed; retrying from default PyPI index."
+    python -m pip install torch
+  fi
 fi
 
 python -m pip install -r "$RWKV_PEFT_DIR/requirements.txt"
 python -m pip install -e "$RWKV_PEFT_DIR"
+# RWKV-PEFT requirements miss json2binidx runtime deps used by prepare_binidx.sh.
+python -m pip install lm_dataformat ftfy numpy tqdm tokenizers
 
 if [ "$INSTALL_DEEPSPEED" = "1" ]; then
   python -m pip install deepspeed
@@ -67,4 +72,3 @@ fi
 
 echo "Bootstrap completed."
 echo "Next step: ./scripts/healthcheck.sh"
-
