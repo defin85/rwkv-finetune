@@ -1,4 +1,6 @@
 ## Context
+Неактуально с 23 февраля 2026: данный дизайн отменён, поскольку принят `refactor-orchestration-to-airflow` с Apache Airflow как primary orchestration profile.
+
 Проект использует thin-wrapper shell архитектуру и локальный стек (WSL, без Docker/K8s). Сейчас есть рабочие точки входа для bootstrap, подготовки binidx и обучения, но нет формального runtime lifecycle для регулярных релизов адаптеров.
 
 В параллельном change `add-1c-dataset-strategy` уже зафиксированы правила качества датасета и антидеградации. Этому change нужен операционный слой: как запускать train/eval/release воспроизводимо и проверяемо.

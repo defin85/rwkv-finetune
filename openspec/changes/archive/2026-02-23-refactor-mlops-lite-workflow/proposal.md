@@ -1,5 +1,8 @@
 # Change: Рефакторинг проекта под MLOps-lite для обучения RWKV v7
 
+## Статус
+Неактуально с 23 февраля 2026: выбран путь `refactor-orchestration-to-airflow`, где Apache Airflow принят как основной orchestration profile.
+
 ## Why
 Текущий pipeline уже рабочий (`bootstrap -> prepare_binidx -> train`), но остаётся «операционно хрупким»: запуск зависит от ручных шагов, а воспроизводимость и трассировка артефактов не формализованы в едином контракте.
 

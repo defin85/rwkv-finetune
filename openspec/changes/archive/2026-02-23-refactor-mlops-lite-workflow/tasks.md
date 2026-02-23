@@ -1,3 +1,6 @@
+> Статус: неактуально с 23 февраля 2026.  
+> Причина: выбран `refactor-orchestration-to-airflow` как основной orchestration profile.
+
 ## 1. Каркас MLOps-lite pipeline
 - [ ] 1.1 Ввести stage runner для последовательности `prepare -> train -> evaluate -> release` с единым run-id и статусами стадий.
 - [ ] 1.2 Стандартизовать контракты входов/выходов стадий и fail-fast проверки обязательных артефактов.
