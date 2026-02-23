@@ -11,15 +11,11 @@
 - **THEN** запуск обучающего pipeline MUST выполняться через Airflow DAG, а не через ad-hoc последовательность ручных shell-команд
 
 ### Requirement: Primary Airflow enforcement policy
-Система MUST использовать `airflow` как единственный primary orchestration profile. Конфигурации с primary=`mlops-lite` или с одновременной активацией `mlops-lite` и `airflow` MUST отклоняться.
+Система MUST использовать `airflow` как единственный primary orchestration profile. Конфигурации с primary=`mlops-lite` MUST отклоняться.
 
 #### Scenario: Попытка активировать `mlops-lite` как primary
 - **WHEN** в deployment-конфигурации primary profile установлен в `mlops-lite`
 - **THEN** система MUST отклонять такую конфигурацию и требовать `airflow` как primary path
-
-#### Scenario: Попытка одновременного включения двух primary профилей
-- **WHEN** в deployment-конфигурации одновременно активированы `mlops-lite` и `airflow` как primary path
-- **THEN** система MUST отклонять такую конфигурацию как невалидную до явного выбора одного профиля
 
 ### Requirement: DAG-контракт стадий обучения
 Система MUST реализовывать DAG со стадиями `prepare_dataset`, `train_adapter`, `evaluate_adapter`, `release_adapter` и с явными зависимостями между стадиями.

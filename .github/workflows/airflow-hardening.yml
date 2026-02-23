@@ -1,0 +1,70 @@
+name: airflow-hardening
+
+on:
+  pull_request:
+    paths:
+      - "scripts/**"
+      - "orchestration/airflow/**"
+      - "tests/**"
+      - "configs/workspace.env.example"
+      - ".github/workflows/airflow-hardening.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/**"
+      - "orchestration/airflow/**"
+      - "tests/**"
+      - "configs/workspace.env.example"
+      - ".github/workflows/airflow-hardening.yml"
+  workflow_dispatch:
+
+jobs:
+  airflow-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run static checks and unit tests
+        run: ./scripts/airflow_ci_checks.sh
+
+  airflow-strict-smoke:
+    if: github.event_name == 'workflow_dispatch'
+    needs: airflow-contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Prepare workspace config
+        run: |
+          cp configs/workspace.env.example configs/workspace.env
+          sed -i 's/^INSTALL_DEEPSPEED=.*/INSTALL_DEEPSPEED=0/' configs/workspace.env
+          sed -i 's/^INSTALL_BITSANDBYTES=.*/INSTALL_BITSANDBYTES=0/' configs/workspace.env
+          sed -i 's/^AIRFLOW_CREATE_ADMIN=.*/AIRFLOW_CREATE_ADMIN=0/' configs/workspace.env
+
+      - name: Setup venv and minimal smoke dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip setuptools wheel
+          git clone --depth 1 https://github.com/JL-er/RWKV-PEFT.git third_party/RWKV-PEFT
+          python -m pip install apache-airflow==2.10.5 --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.12.txt"
+          python -m pip install torch lm_dataformat ftfy numpy tqdm tokenizers jsonlines
+
+      - name: Bootstrap Airflow
+        run: ./scripts/airflow_bootstrap.sh --skip-install --skip-admin-user
+
+      - name: Run strict smoke
+        run: ./scripts/airflow_smoke.sh ci-strict-smoke --mode strict

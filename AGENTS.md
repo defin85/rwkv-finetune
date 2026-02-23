@@ -200,11 +200,14 @@ For full workflow details: `bd prime`
 
 - Primary orchestration profile MUST быть `airflow`.
 - Конфигурации с `ORCHESTRATION_PROFILE=mlops-lite` считаются невалидными для primary runtime.
+- Поддерживаемый Python-диапазон для Airflow tooling: `3.9..3.12` (проверяется через preflight).
 - Основные команды:
+  - preflight: `./scripts/airflow_preflight.sh [--require-airflow]`
   - bootstrap: `./scripts/airflow_bootstrap.sh`
   - services: `./scripts/airflow_services.sh <start|stop|restart|status>`
   - trigger: `./scripts/run_pipeline.sh --conf-file <path>`
-  - smoke: `./scripts/airflow_smoke.sh`
+  - smoke: `./scripts/airflow_smoke.sh [--mode strict|fallback]`
+- Для CI smoke MUST выполняться в strict-режиме.
 - При сбоях и rollback использовать `docs/airflow-runbook.md` как основной operational guide.
 
 ## Стратегия датасетов и антидеградации модели

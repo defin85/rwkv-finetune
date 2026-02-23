@@ -60,7 +60,7 @@ def _dag_conf(context: dict[str, Any]) -> dict[str, Any]:
     data_prefix = _conf_or_env(conf, "data_prefix", f"{output_prefix}_text_document")
     eval_summary_path = _conf_or_env(conf, "eval_summary_path", str(RUNS_DIR / run_name / "eval_summary.json"))
     release_manifest_path = _conf_or_env(conf, "release_manifest_path", str(RUNS_DIR / run_name / "release_manifest.json"))
-    train_wrapper = _conf_or_env(conf, "train_wrapper", str(SCRIPTS_DIR / "train_lora.sh"))
+    train_wrapper = _conf_or_env(conf, "train_wrapper", str(SCRIPTS_DIR / "train.sh"))
     return {
         "run_name": run_name,
         "input_jsonl": _conf_or_env(conf, "input_jsonl", ""),

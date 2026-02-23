@@ -53,6 +53,7 @@ done
 
 require_primary_airflow
 activate_venv_if_present
+"$ROOT_DIR/scripts/airflow_preflight.sh" --require-airflow --quiet
 need_cmd airflow
 
 if [ -n "$CONF_FILE" ] && [ -n "$CONF_JSON" ]; then

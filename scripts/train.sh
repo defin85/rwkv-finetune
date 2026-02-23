@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKSPACE_ENV="$ROOT_DIR/configs/workspace.env"
 
-if [ -f "$WORKSPACE_ENV" ]; then
+if [ "${USE_WORKSPACE_ENV:-1}" = "1" ] && [ -f "$WORKSPACE_ENV" ]; then
   # shellcheck disable=SC1090
   source "$WORKSPACE_ENV"
 fi
@@ -19,16 +19,16 @@ DATA_PREFIX=""
 RUN_NAME=""
 DEVICES="${DEVICES:-1}"
 WANDB_PROJECT="${WANDB_PROJECT:-}"
+DEFAULT_MODEL_CONFIG="${TRAIN_MODEL_CONFIG:-$ROOT_DIR/configs/model/rwkv7-1.5b.env}"
+DEFAULT_PROFILE_CONFIG="${TRAIN_PROFILE_CONFIG:-$ROOT_DIR/configs/profile/lora-bf16.env}"
 
 usage() {
   cat <<'EOF'
 Usage:
-  train.sh --model <model.env> --profile <profile.env> --load-model <base_model.pth> --data-prefix <binidx_prefix> [--run-name <name>] [--devices <n>] [--wandb <project>]
+  train.sh [--model <model.env>] [--profile <profile.env>] --load-model <base_model.pth> --data-prefix <binidx_prefix> [--run-name <name>] [--devices <n>] [--wandb <project>]
 
 Example:
   ./scripts/train.sh \
-    --model ./configs/model/rwkv7-1.5b.env \
-    --profile ./configs/profile/qlora-nf4.env \
     --load-model ./models/base/rwkv7-1.5b.pth \
     --data-prefix ./data/processed/sample_text_document \
     --run-name exp-rwkv7-qlora
@@ -77,9 +77,19 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-if [ -z "$MODEL_CONFIG" ] || [ -z "$PROFILE_CONFIG" ] || [ -z "$LOAD_MODEL" ] || [ -z "$DATA_PREFIX" ]; then
+if [ -z "$LOAD_MODEL" ] || [ -z "$DATA_PREFIX" ]; then
   usage
   exit 1
+fi
+
+if [ -z "$MODEL_CONFIG" ]; then
+  MODEL_CONFIG="$DEFAULT_MODEL_CONFIG"
+  echo "Using default model config: $MODEL_CONFIG"
+fi
+
+if [ -z "$PROFILE_CONFIG" ]; then
+  PROFILE_CONFIG="$DEFAULT_PROFILE_CONFIG"
+  echo "Using default profile config: $PROFILE_CONFIG"
 fi
 
 if [ ! -f "$MODEL_CONFIG" ]; then
@@ -205,4 +215,3 @@ echo
 echo
 
 "${CMD[@]}"
-

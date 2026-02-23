@@ -19,24 +19,36 @@ grep -n '^ORCHESTRATION_PROFILE=' configs/workspace.env
 
 Ожидаемое значение: `ORCHESTRATION_PROFILE=airflow`.
 
-3. Установить зависимости:
+3. Выполнить preflight:
+
+```bash
+./scripts/airflow_preflight.sh
+```
+
+4. Установить зависимости:
 
 ```bash
 ./scripts/bootstrap.sh
 ./scripts/airflow_bootstrap.sh
 ```
 
-4. Поднять сервисы:
+5. Поднять сервисы:
 
 ```bash
 ./scripts/airflow_services.sh start
 ./scripts/airflow_services.sh status
 ```
 
-5. Проверить smoke:
+6. Проверить smoke:
 
 ```bash
-./scripts/airflow_smoke.sh
+./scripts/airflow_smoke.sh --mode fallback
+```
+
+Для CI и release gates использовать strict-режим:
+
+```bash
+./scripts/airflow_smoke.sh --mode strict
 ```
 
 ## 2. Штатный запуск pipeline
@@ -141,5 +153,6 @@ export RWKV_RELEASE_MANIFEST=/home/egor/code/rwkv-finetune/runs/<stable_run>/rel
 
 ## 5. Known limitation (на дату 2026-02-23)
 
-- На окружении `Airflow 3.0.6 + Python 3.14.3` команда `airflow dags test` падает в execution API (`cadwyn` typing error).
-- `./scripts/airflow_smoke.sh` покрывает это через wrapper fallback и всё равно валидирует expected outputs.
+- Airflow tooling в этом репозитории поддерживает Python `3.9..3.12`.
+- На Python `3.13+` preflight блокирует запуск Airflow-скриптов до перехода на поддерживаемую версию.
+- В fallback-режиме smoke допускает wrapper-path при сбое `airflow dags test`; для CI использовать только strict-режим.

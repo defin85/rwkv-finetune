@@ -45,6 +45,7 @@ require_primary_airflow
 need_cmd "$PYTHON_BIN"
 activate_venv_if_present
 ensure_runtime_dirs
+"$ROOT_DIR/scripts/airflow_preflight.sh" --quiet
 
 if [ "$SKIP_INSTALL" = "0" ]; then
   PYTHON_VERSION="$("$PYTHON_BIN" -c 'import sys; print(f\"{sys.version_info.major}.{sys.version_info.minor}\")')"
@@ -54,6 +55,7 @@ if [ "$SKIP_INSTALL" = "0" ]; then
 fi
 
 need_cmd airflow
+"$ROOT_DIR/scripts/airflow_preflight.sh" --require-airflow --quiet
 
 if airflow db migrate >/dev/null 2>&1; then
   airflow db migrate
@@ -64,11 +66,23 @@ fi
 airflow pools set "$AIRFLOW_GPU_POOL_NAME" "$AIRFLOW_GPU_POOL_SLOTS" "Serialize GPU-bound train/eval tasks"
 
 if [ "${AIRFLOW_CREATE_ADMIN:-1}" = "1" ] && [ "$SKIP_ADMIN_USER" = "0" ]; then
-  AIRFLOW_ADMIN_USERNAME="${AIRFLOW_ADMIN_USERNAME:-admin}"
-  AIRFLOW_ADMIN_PASSWORD="${AIRFLOW_ADMIN_PASSWORD:-admin}"
+  AIRFLOW_ADMIN_USERNAME="${AIRFLOW_ADMIN_USERNAME:-airflow_admin}"
+  AIRFLOW_ADMIN_PASSWORD="${AIRFLOW_ADMIN_PASSWORD:-}"
   AIRFLOW_ADMIN_FIRSTNAME="${AIRFLOW_ADMIN_FIRSTNAME:-RWKV}"
   AIRFLOW_ADMIN_LASTNAME="${AIRFLOW_ADMIN_LASTNAME:-Ops}"
   AIRFLOW_ADMIN_EMAIL="${AIRFLOW_ADMIN_EMAIL:-admin@example.local}"
+
+  if [ -z "$AIRFLOW_ADMIN_PASSWORD" ]; then
+    echo "AIRFLOW_CREATE_ADMIN=1 requires AIRFLOW_ADMIN_PASSWORD to be set." >&2
+    exit 1
+  fi
+
+  case "$AIRFLOW_ADMIN_PASSWORD" in
+    admin|admin123|password|changeme|CHANGE_ME_STRONG_PASSWORD)
+      echo "Insecure AIRFLOW_ADMIN_PASSWORD value detected. Set a strong unique password." >&2
+      exit 1
+      ;;
+  esac
 
   if airflow users --help >/dev/null 2>&1; then
     if ! airflow users list | awk '{print $2}' | grep -qx "$AIRFLOW_ADMIN_USERNAME"; then

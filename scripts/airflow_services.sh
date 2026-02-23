@@ -131,6 +131,7 @@ fi
 
 require_primary_airflow
 activate_venv_if_present
+"$ROOT_DIR/scripts/airflow_preflight.sh" --require-airflow --quiet
 
 case "$1" in
   start)

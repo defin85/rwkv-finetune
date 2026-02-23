@@ -8,7 +8,7 @@ The goal is finetuning for 1C:Enterprise programming tasks while preserving gene
 
 - Reproducible workspace layout for data, models, logs, and runs
 - Bootstrap scripts for Python environment and training dependencies
-- Airflow orchestration scripts (`bootstrap`, `services`, `trigger`, `smoke`)
+- Airflow orchestration scripts (`preflight`, `bootstrap`, `services`, `trigger`, `smoke`)
 - Airflow DAG `rwkv_train_lifecycle`:
   - `prepare_dataset`
   - `check_dataset_quality`
@@ -65,31 +65,37 @@ cd /home/egor/code/rwkv-finetune
 cp configs/workspace.env.example configs/workspace.env
 ```
 
-2. Bootstrap training dependencies:
+2. Run Airflow preflight (Python/Airflow compatibility):
+
+```bash
+./scripts/airflow_preflight.sh
+```
+
+3. Bootstrap training dependencies:
 
 ```bash
 ./scripts/bootstrap.sh
 ```
 
-3. Bootstrap Airflow runtime:
+4. Bootstrap Airflow runtime:
 
 ```bash
 ./scripts/airflow_bootstrap.sh
 ```
 
-4. Start Airflow services:
+5. Start Airflow services:
 
 ```bash
 ./scripts/airflow_services.sh start
 ```
 
-5. Run DAG smoke:
+6. Run DAG smoke:
 
 ```bash
-./scripts/airflow_smoke.sh
+./scripts/airflow_smoke.sh --mode fallback
 ```
 
-6. Trigger pipeline:
+7. Trigger pipeline:
 
 ```bash
 cat > /tmp/rwkv-airflow-conf.json <<'EOF'
@@ -107,7 +113,7 @@ EOF
   --conf-file /tmp/rwkv-airflow-conf.json
 ```
 
-7. Check runs and tasks:
+8. Check runs and tasks:
 
 ```bash
 airflow dags list-runs -d rwkv_train_lifecycle
@@ -118,8 +124,11 @@ airflow tasks states-for-dag-run rwkv_train_lifecycle rwkv-airflow-manual-001
 
 - `ORCHESTRATION_PROFILE` MUST be `airflow` for production execution.
 - `mlops-lite` is archived and is not a valid primary profile.
+- Supported Python range for Airflow scripts is `3.9..3.12`.
 - GPU-bound tasks are serialized via Airflow pool (`rwkv_gpu_pool`, slots=`1`).
 - Release is blocked when dataset quality gate or eval gates are `FAIL`.
+- CI policy: smoke uses `./scripts/airflow_smoke.sh --mode strict`.
+- Admin bootstrap is disabled by default (`AIRFLOW_CREATE_ADMIN=0`); enable only with a strong unique password.
 
 ## Legacy Wrapper Execution (Debug Only)
 
@@ -127,11 +136,16 @@ Direct wrapper execution remains available for local debugging:
 
 ```bash
 ./scripts/prepare_binidx.sh data/raw/sample.jsonl data/processed/sample
-./scripts/train_lora.sh \
+./scripts/train.sh \
   --load-model /home/egor/code/rwkv-finetune/models/base/YOUR_MODEL.pth \
   --data-prefix /home/egor/code/rwkv-finetune/data/processed/sample_text_document \
   --run-name rwkv7-lora-test
 ```
+
+`train.sh` accepts explicit `--model/--profile` or defaults from:
+
+- `TRAIN_MODEL_CONFIG` (default `configs/model/rwkv7-1.5b.env`)
+- `TRAIN_PROFILE_CONFIG` (default `configs/profile/lora-bf16.env`)
 
 ## Model configs
 

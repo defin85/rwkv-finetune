@@ -5,7 +5,70 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck disable=SC1091
 source "$ROOT_DIR/scripts/airflow_common.sh"
 
-RUN_NAME="${1:-airflow-smoke-$(date +%Y%m%d%H%M%S)}"
+MODE="fallback"
+RUN_NAME=""
+
+usage() {
+  cat <<'EOF'
+Usage:
+  airflow_smoke.sh [run_name] [--mode strict|fallback]
+
+Options:
+  --mode <mode>  Smoke execution mode:
+                 strict   - no wrapper fallback; fail immediately if DAG test fails
+                 fallback - run wrapper fallback if DAG test fails (default)
+  --strict       Shortcut for --mode strict
+  --fallback     Shortcut for --mode fallback
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --mode)
+      MODE="$2"
+      shift 2
+      ;;
+    --strict)
+      MODE="strict"
+      shift
+      ;;
+    --fallback)
+      MODE="fallback"
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    -*)
+      echo "Unknown argument: $1" >&2
+      usage
+      exit 1
+      ;;
+    *)
+      if [ -n "$RUN_NAME" ]; then
+        echo "Unexpected positional argument: $1" >&2
+        usage
+        exit 1
+      fi
+      RUN_NAME="$1"
+      shift
+      ;;
+  esac
+done
+
+if [ -z "$RUN_NAME" ]; then
+  RUN_NAME="airflow-smoke-$(date +%Y%m%d%H%M%S)"
+fi
+
+case "$MODE" in
+  strict|fallback) ;;
+  *)
+    echo "Invalid --mode value: $MODE (expected strict|fallback)" >&2
+    exit 1
+    ;;
+esac
+
 SMOKE_ROOT="$AIRFLOW_RUNTIME_ROOT/smoke/$RUN_NAME"
 INPUT_JSONL="$SMOKE_ROOT/input.jsonl"
 OUTPUT_PREFIX="$SMOKE_ROOT/data/sample"
@@ -15,11 +78,11 @@ MODEL_PLACEHOLDER="$SMOKE_ROOT/models/smoke-model.pth"
 EVAL_SUMMARY="$ROOT_DIR/runs/$RUN_NAME/eval_summary.json"
 RELEASE_MANIFEST="$ROOT_DIR/runs/$RUN_NAME/release_manifest.json"
 LOGICAL_DATE="$(date -u +%Y-%m-%dT%H:%M:%S)"
-ENV_JSON=""
 SMOKE_REPORT="$SMOKE_ROOT/smoke_report.json"
 
 require_primary_airflow
 activate_venv_if_present
+"$ROOT_DIR/scripts/airflow_preflight.sh" --require-airflow --quiet
 need_cmd airflow
 ensure_runtime_dirs
 
@@ -65,51 +128,40 @@ with open(conf_path, "w", encoding="utf-8") as fh:
     fh.write("\n")
 PY
 
-ENV_JSON="$(python - "$CONF_JSON" <<'PY'
-import json
-import sys
-
-conf_path = sys.argv[1]
-with open(conf_path, "r", encoding="utf-8") as fh:
-    conf = json.load(fh)
-
-env_payload = {
-    "RWKV_AIRFLOW_INPUT_JSONL": conf["input_jsonl"],
-    "RWKV_AIRFLOW_OUTPUT_PREFIX": conf["output_prefix"],
-    "RWKV_AIRFLOW_DATA_PREFIX": conf["data_prefix"],
-    "RWKV_AIRFLOW_LOAD_MODEL": conf["load_model"],
-    "RWKV_AIRFLOW_RUN_NAME": conf["run_name"],
-    "RWKV_AIRFLOW_TRAIN_WRAPPER": conf["train_wrapper"],
-    "RWKV_AIRFLOW_DATASET_QUALITY_STATUS": conf["dataset_quality_status"],
-    "RWKV_AIRFLOW_DOMAIN_EVAL_VERDICT": conf["domain_eval_verdict"],
-    "RWKV_AIRFLOW_RETENTION_EVAL_VERDICT": conf["retention_eval_verdict"],
-    "RWKV_AIRFLOW_EVAL_SUMMARY_PATH": conf["eval_summary_path"],
-    "RWKV_AIRFLOW_RELEASE_MANIFEST_PATH": conf["release_manifest_path"],
-}
-print(json.dumps(env_payload, ensure_ascii=True))
-PY
-)"
-
-echo "Running DAG smoke test for: $RUN_NAME"
-if airflow dags test "$AIRFLOW_DAG_ID" "$LOGICAL_DATE" --conf "$(cat "$CONF_JSON")"; then
-  echo "Primary smoke path: airflow dags test -> OK"
-  python - "$SMOKE_REPORT" "$RUN_NAME" <<'PY'
+write_smoke_report() {
+  local status="$1"
+  local mode="$2"
+  local detail="$3"
+  python - "$SMOKE_REPORT" "$RUN_NAME" "$status" "$mode" "$detail" <<'PY'
 import json
 import sys
 from datetime import datetime, timezone
 
-report_path, run_name = sys.argv[1:3]
+report_path, run_name, status, mode, detail = sys.argv[1:6]
 payload = {
     "run_name": run_name,
-    "mode": "dag_test",
-    "status": "PASS",
+    "mode": mode,
+    "status": status,
+    "detail": detail,
     "created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
 }
 with open(report_path, "w", encoding="utf-8") as fh:
     json.dump(payload, fh, ensure_ascii=True, indent=2)
     fh.write("\n")
 PY
+}
+
+echo "Running DAG smoke test for: $RUN_NAME (mode=$MODE)"
+if airflow dags test "$AIRFLOW_DAG_ID" "$LOGICAL_DATE" --conf "$(cat "$CONF_JSON")"; then
+  echo "Primary smoke path: airflow dags test -> OK"
+  write_smoke_report "PASS" "dag_test" "airflow dags test succeeded"
 else
+  if [ "$MODE" = "strict" ]; then
+    write_smoke_report "FAIL" "strict" "airflow dags test failed; fallback disabled in strict mode"
+    echo "Primary smoke path failed and strict mode is enabled." >&2
+    exit 1
+  fi
+
   echo "Primary smoke path failed, running wrapper fallback smoke."
   ./scripts/prepare_binidx.sh "$INPUT_JSONL" "$OUTPUT_PREFIX"
   ./scripts/train_smoke_stub.sh --load-model "$MODEL_PLACEHOLDER" --data-prefix "$DATA_PREFIX" --run-name "$RUN_NAME"
@@ -142,23 +194,7 @@ for path, payload in [(dataset_gate_path, dataset_gate), (eval_gate_path, eval_g
         fh.write("\n")
 PY
 
-  python - "$SMOKE_REPORT" "$RUN_NAME" <<'PY'
-import json
-import sys
-from datetime import datetime, timezone
-
-report_path, run_name = sys.argv[1:3]
-payload = {
-    "run_name": run_name,
-    "mode": "wrapper_fallback",
-    "status": "PASS_WITH_LIMITATIONS",
-    "limitation": "airflow dags test failed on current runtime; wrapper fallback executed",
-    "created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-}
-with open(report_path, "w", encoding="utf-8") as fh:
-    json.dump(payload, fh, ensure_ascii=True, indent=2)
-    fh.write("\n")
-PY
+  write_smoke_report "PASS_WITH_LIMITATIONS" "wrapper_fallback" "airflow dags test failed; wrapper fallback executed"
   echo "Fallback smoke path: wrapper sequence -> OK"
 fi
 
