@@ -38,3 +38,6 @@ orchestration/airflow/runtime/pids/*
 !orchestration/airflow/runtime/pids/.gitkeep
 orchestration/airflow/runtime/audit/*
 !orchestration/airflow/runtime/audit/.gitkeep
+
+# Local Airflow runtime artifacts (runtime-2x profile)
+orchestration/airflow/runtime-2x/

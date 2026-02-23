@@ -1,5 +1,0 @@
-[2026-02-23 21:44:14 +0300] [534477] [INFO] Starting gunicorn 23.0.0
-[2026-02-23 21:44:14 +0300] [534477] [INFO] Listening at: http://[::]:8793 (534477)
-[2026-02-23 21:44:14 +0300] [534477] [INFO] Using worker: sync
-[2026-02-23 21:44:14 +0300] [534479] [INFO] Booting worker with pid: 534479
-[2026-02-23 21:44:14 +0300] [534524] [INFO] Booting worker with pid: 534524
