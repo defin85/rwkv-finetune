@@ -8,6 +8,7 @@ source "$ROOT_DIR/scripts/airflow_common.sh"
 SERVICE_LOG_DIR=""
 SCHEDULER_PID_FILE=""
 WEBSERVER_PID_FILE=""
+WEBSERVER_MONITOR_PID_FILE=""
 WEB_PROCESS_LABEL="webserver"
 
 has_subcommand() {
@@ -21,6 +22,7 @@ init_paths() {
   mkdir -p "$SERVICE_LOG_DIR"
   SCHEDULER_PID_FILE="$AIRFLOW_PID_DIR/scheduler.pid"
   WEBSERVER_PID_FILE="$AIRFLOW_PID_DIR/webserver.pid"
+  WEBSERVER_MONITOR_PID_FILE="$AIRFLOW_PID_DIR/webserver-monitor.pid"
 }
 
 is_running() {
@@ -36,9 +38,36 @@ is_running() {
   kill -0 "$pid" >/dev/null 2>&1
 }
 
+cleanup_stale_pid_file() {
+  local pid_file="$1"
+  if [ ! -f "$pid_file" ]; then
+    return 0
+  fi
+  if is_running "$pid_file"; then
+    return 0
+  fi
+  rm -f "$pid_file"
+}
+
+wait_for_running() {
+  local pid_file="$1"
+  local attempts="$2"
+  for _ in $(seq 1 "$attempts"); do
+    if is_running "$pid_file"; then
+      return 0
+    fi
+    sleep 0.2
+  done
+  return 1
+}
+
 start_services() {
   need_cmd airflow
   init_paths
+
+  cleanup_stale_pid_file "$SCHEDULER_PID_FILE"
+  cleanup_stale_pid_file "$WEBSERVER_PID_FILE"
+  cleanup_stale_pid_file "$WEBSERVER_MONITOR_PID_FILE"
 
   if ! is_running "$SCHEDULER_PID_FILE"; then
     airflow scheduler \
@@ -46,6 +75,10 @@ start_services() {
       --pid "$SCHEDULER_PID_FILE" \
       --stdout "$SERVICE_LOG_DIR/scheduler.out" \
       --stderr "$SERVICE_LOG_DIR/scheduler.err"
+    wait_for_running "$SCHEDULER_PID_FILE" 25 || {
+      echo "scheduler failed to start" >&2
+      return 1
+    }
   fi
 
   if ! is_running "$WEBSERVER_PID_FILE"; then
@@ -66,6 +99,10 @@ start_services() {
         --stdout "$SERVICE_LOG_DIR/webserver.out" \
         --stderr "$SERVICE_LOG_DIR/webserver.err"
     fi
+    wait_for_running "$WEBSERVER_PID_FILE" 50 || {
+      echo "webserver/api-server failed to start" >&2
+      return 1
+    }
   fi
 }
 
@@ -93,8 +130,9 @@ stop_service_by_pid() {
 
 stop_services() {
   init_paths
-  stop_service_by_pid "$SCHEDULER_PID_FILE"
   stop_service_by_pid "$WEBSERVER_PID_FILE"
+  stop_service_by_pid "$WEBSERVER_MONITOR_PID_FILE"
+  stop_service_by_pid "$SCHEDULER_PID_FILE"
 }
 
 status_services() {

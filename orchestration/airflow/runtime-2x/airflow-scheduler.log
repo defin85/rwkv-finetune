@@ -1,0 +1,108 @@
+2026-02-23 17:51:37,571 INFO - Loaded executor: SequentialExecutor
+2026-02-23 17:51:37,646 INFO - Starting the scheduler
+2026-02-23 17:51:37,647 INFO - Processing each file at most -1 times
+2026-02-23 17:51:37,653 INFO - Launched DagFileProcessorManager with pid: 368543
+2026-02-23 17:51:37,655 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 17:51:37,657 INFO - Configured default timezone UTC
+2026-02-23 17:55:38,852 INFO - Exiting gracefully upon receiving signal 15
+2026-02-23 17:55:39,857 INFO - Sending 15 to group 368543. PIDs of all processes in the group: [368543]
+2026-02-23 17:55:39,857 INFO - Sending the signal 15 to group 368543
+2026-02-23 17:55:39,950 INFO - Process psutil.Process(pid=368543, status='terminated', exitcode=0, started='17:51:37') (368543) terminated with exit code 0
+2026-02-23 17:55:39,954 INFO - Sending 15 to group 368543. PIDs of all processes in the group: []
+2026-02-23 17:55:39,955 INFO - Sending the signal 15 to group 368543
+2026-02-23 17:55:39,955 INFO - Sending the signal 15 to process 368543 as process group is missing.
+2026-02-23 17:55:39,955 INFO - Exited execute loop
+2026-02-23 18:08:00,584 INFO - Loaded executor: LocalExecutor
+2026-02-23 18:08:00,614 INFO - Starting the scheduler
+2026-02-23 18:08:00,616 INFO - Processing each file at most -1 times
+2026-02-23 18:08:00,723 INFO - Launched DagFileProcessorManager with pid: 389463
+2026-02-23 18:08:00,727 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 18:08:00,730 INFO - Configured default timezone UTC
+2026-02-23 18:13:00,734 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 18:18:00,737 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 18:23:00,730 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 18:28:00,738 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 18:33:00,736 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 18:38:00,738 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 18:43:00,794 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 18:48:00,805 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 18:53:00,812 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 18:58:00,810 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 19:03:00,810 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 19:08:00,810 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 19:13:00,800 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 19:18:00,807 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 19:23:00,804 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 19:28:00,798 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 19:33:00,795 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 19:38:00,808 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 19:43:00,807 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 19:48:00,818 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 19:53:00,828 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 19:58:00,831 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 20:03:00,842 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 20:08:00,869 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 20:13:00,866 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 20:18:00,866 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 20:23:00,870 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 20:28:00,879 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 20:33:00,879 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 20:38:00,898 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 20:43:00,884 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 20:48:00,882 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 20:53:00,907 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 20:58:00,927 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 21:03:00,956 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 21:08:00,972 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 21:13:00,974 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 21:18:00,996 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 21:23:00,981 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 21:28:00,982 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 21:33:01,019 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 21:38:01,021 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 21:42:20,685 INFO - Exiting gracefully upon receiving signal 15
+2026-02-23 21:42:21,693 INFO - Sending 15 to group 389463. PIDs of all processes in the group: [389463]
+2026-02-23 21:42:21,698 INFO - Sending the signal 15 to group 389463
+2026-02-23 21:42:21,878 INFO - Process psutil.Process(pid=389463, status='terminated', exitcode=0, started='18:07:58') (389463) terminated with exit code 0
+2026-02-23 21:42:21,878 INFO - Shutting down LocalExecutor; waiting for running tasks to finish.  Signal again if you don't want to wait.
+2026-02-23 21:42:22,054 INFO - Sending 15 to group 389463. PIDs of all processes in the group: []
+2026-02-23 21:42:22,058 INFO - Sending the signal 15 to group 389463
+2026-02-23 21:42:22,062 INFO - Sending the signal 15 to process 389463 as process group is missing.
+2026-02-23 21:42:22,062 INFO - Exited execute loop
+2026-02-23 21:42:29,541 INFO - Loaded executor: LocalExecutor
+2026-02-23 21:42:29,604 INFO - Starting the scheduler
+2026-02-23 21:42:29,605 INFO - Processing each file at most -1 times
+2026-02-23 21:42:29,893 INFO - Launched DagFileProcessorManager with pid: 532481
+2026-02-23 21:42:29,898 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 21:42:29,937 INFO - Configured default timezone UTC
+2026-02-23 21:43:55,905 INFO - Exiting gracefully upon receiving signal 15
+2026-02-23 21:43:56,910 INFO - Sending 15 to group 532481. PIDs of all processes in the group: [532481]
+2026-02-23 21:43:56,910 INFO - Sending the signal 15 to group 532481
+2026-02-23 21:43:57,004 INFO - Process psutil.Process(pid=532481, status='terminated', exitcode=0, started='21:42:28') (532481) terminated with exit code 0
+2026-02-23 21:43:57,004 INFO - Shutting down LocalExecutor; waiting for running tasks to finish.  Signal again if you don't want to wait.
+2026-02-23 21:43:57,061 INFO - Sending 15 to group 532481. PIDs of all processes in the group: []
+2026-02-23 21:43:57,061 INFO - Sending the signal 15 to group 532481
+2026-02-23 21:43:57,062 INFO - Sending the signal 15 to process 532481 as process group is missing.
+2026-02-23 21:43:57,062 INFO - Exited execute loop
+2026-02-23 21:43:59,817 INFO - Loaded executor: LocalExecutor
+2026-02-23 21:43:59,881 INFO - Starting the scheduler
+2026-02-23 21:43:59,882 INFO - Processing each file at most -1 times
+2026-02-23 21:43:59,991 INFO - Launched DagFileProcessorManager with pid: 534055
+2026-02-23 21:43:59,995 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 21:44:00,002 INFO - Configured default timezone UTC
+2026-02-23 21:44:11,414 INFO - Exiting gracefully upon receiving signal 15
+2026-02-23 21:44:12,420 INFO - Sending 15 to group 534055. PIDs of all processes in the group: [534055]
+2026-02-23 21:44:12,420 INFO - Sending the signal 15 to group 534055
+2026-02-23 21:44:12,513 INFO - Process psutil.Process(pid=534055, status='terminated', exitcode=0, started='21:43:59') (534055) terminated with exit code 0
+2026-02-23 21:44:12,514 INFO - Shutting down LocalExecutor; waiting for running tasks to finish.  Signal again if you don't want to wait.
+2026-02-23 21:44:12,564 INFO - Sending 15 to group 534055. PIDs of all processes in the group: []
+2026-02-23 21:44:12,564 INFO - Sending the signal 15 to group 534055
+2026-02-23 21:44:12,564 INFO - Sending the signal 15 to process 534055 as process group is missing.
+2026-02-23 21:44:12,564 INFO - Exited execute loop
+2026-02-23 21:44:14,363 INFO - Loaded executor: LocalExecutor
+2026-02-23 21:44:14,391 INFO - Starting the scheduler
+2026-02-23 21:44:14,391 INFO - Processing each file at most -1 times
+2026-02-23 21:44:14,510 INFO - Launched DagFileProcessorManager with pid: 534617
+2026-02-23 21:44:14,512 INFO - Adopting or resetting orphaned tasks for active dag runs
+2026-02-23 21:44:14,521 INFO - Configured default timezone UTC
+2026-02-23 21:49:14,541 INFO - Adopting or resetting orphaned tasks for active dag runs

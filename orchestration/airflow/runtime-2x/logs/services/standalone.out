@@ -1,0 +1,98 @@
+standalone | Starting Airflow Standalone
+standalone | Checking database is initialized
+standalone | Database ready
+FlaskAppBuilder Authentication Manager: Creating admin user
+FlaskAppBuilder Authentication Manager: Created admin user
+triggerer  | ____________       _____________
+triggerer  | ____    |__( )_________  __/__  /________      __
+triggerer  | ____  /| |_  /__  ___/_  /_ __  /_  __ \_ | /| / /
+triggerer  | ___  ___ |  / _  /   _  __/ _  / / /_/ /_ |/ |/ /
+triggerer  | _/_/  |_/_/  /_/    /_/    /_/  \____/____/|__/
+scheduler  | ____________       _____________
+scheduler  | ____    |__( )_________  __/__  /________      __
+scheduler  | ____  /| |_  /__  ___/_  /_ __  /_  __ \_ | /| / /
+scheduler  | ___  ___ |  / _  /   _  __/ _  / / /_/ /_ |/ |/ /
+scheduler  | _/_/  |_/_/  /_/    /_/    /_/  \____/____/|__/
+scheduler  | [2026-02-23T17:56:22.243+0300] {executor_loader.py:258} INFO - Loaded executor: SequentialExecutor
+triggerer  | [2026-02-23 17:56:22 +0300] [374035] [INFO] Starting gunicorn 23.0.0
+triggerer  | [2026-02-23 17:56:22 +0300] [374035] [INFO] Listening at: http://[::]:8794 (374035)
+triggerer  | [2026-02-23 17:56:22 +0300] [374035] [INFO] Using worker: sync
+scheduler  | [2026-02-23 17:56:22 +0300] [374036] [INFO] Starting gunicorn 23.0.0
+triggerer  | [2026-02-23 17:56:22 +0300] [374037] [INFO] Booting worker with pid: 374037
+scheduler  | [2026-02-23 17:56:22 +0300] [374036] [ERROR] Connection in use: ('::', 8793)
+scheduler  | [2026-02-23 17:56:22 +0300] [374036] [ERROR] connection to ('::', 8793) failed: [Errno 98] Address already in use
+scheduler  | [2026-02-23T17:56:22.286+0300] {scheduler_job_runner.py:950} INFO - Starting the scheduler
+scheduler  | [2026-02-23T17:56:22.287+0300] {scheduler_job_runner.py:957} INFO - Processing each file at most -1 times
+triggerer  | [2026-02-23 17:56:22 +0300] [374038] [INFO] Booting worker with pid: 374038
+scheduler  | [2026-02-23T17:56:22.291+0300] {manager.py:174} INFO - Launched DagFileProcessorManager with pid: 374039
+scheduler  | [2026-02-23T17:56:22.293+0300] {scheduler_job_runner.py:1949} INFO - Adopting or resetting orphaned tasks for active dag runs
+scheduler  | [2026-02-23T17:56:22.295+0300] {settings.py:63} INFO - Configured default timezone UTC
+triggerer  | [2026-02-23T17:56:22.309+0300] {triggerer_job_runner.py:181} INFO - Setting up TriggererHandlerWrapper with handler <FileTaskHandler (NOTSET)>
+triggerer  | [2026-02-23T17:56:22.311+0300] {triggerer_job_runner.py:237} INFO - Setting up logging queue listener with handlers [<RedirectStdHandler <stdout> (NOTSET)>, <TriggererHandlerWrapper (NOTSET)>]
+scheduler  | [2026-02-23T17:56:22.316+0300] {manager.py:406} WARNING - Because we cannot use more than 1 thread (parsing_processes = 2) when using sqlite. So we set parallelism to 1.
+triggerer  | [2026-02-23T17:56:22.339+0300] {triggerer_job_runner.py:338} INFO - Starting the triggerer
+webserver  | /home/egor/code/rwkv-finetune/.venv312/lib/python3.12/site-packages/flask_limiter/extension.py:333 UserWarning: Using the in-memory storage for tracking rate limits as no storage was explicitly specified. This is not recommended for production use. See: https://flask-limiter.readthedocs.io#configuring-a-storage-backend for documentation about configuring the storage backend.
+scheduler  | [2026-02-23 17:56:23 +0300] [374036] [ERROR] Connection in use: ('::', 8793)
+scheduler  | [2026-02-23 17:56:23 +0300] [374036] [ERROR] connection to ('::', 8793) failed: [Errno 98] Address already in use
+webserver  | /home/egor/code/rwkv-finetune/.venv312/lib/python3.12/site-packages/airflow/api_connexion/schemas/task_schema.py:52 ChangedInMarshmallow4Warning: `Number` field should not be instantiated. Use `Integer`, `Float`, or `Decimal` instead.
+webserver  | /home/egor/code/rwkv-finetune/.venv312/lib/python3.12/site-packages/airflow/api_connexion/schemas/task_schema.py:55 ChangedInMarshmallow4Warning: `Number` field should not be instantiated. Use `Integer`, `Float`, or `Decimal` instead.
+webserver  | /home/egor/code/rwkv-finetune/.venv312/lib/python3.12/site-packages/airflow/api_connexion/schemas/task_schema.py:59 ChangedInMarshmallow4Warning: `Number` field should not be instantiated. Use `Integer`, `Float`, or `Decimal` instead.
+webserver  | [2026-02-23 17:56:23 +0300] [374034] [INFO] Starting gunicorn 23.0.0
+webserver  | [2026-02-23 17:56:23 +0300] [374034] [INFO] Listening at: http://0.0.0.0:18080 (374034)
+webserver  | [2026-02-23 17:56:23 +0300] [374034] [INFO] Using worker: sync
+webserver  | [2026-02-23 17:56:23 +0300] [374084] [INFO] Booting worker with pid: 374084
+webserver  | [2026-02-23 17:56:23 +0300] [374085] [INFO] Booting worker with pid: 374085
+webserver  | [2026-02-23 17:56:24 +0300] [374086] [INFO] Booting worker with pid: 374086
+webserver  | [2026-02-23 17:56:24 +0300] [374087] [INFO] Booting worker with pid: 374087
+webserver  | 127.0.0.1 - - [23/Feb/2026:17:56:24 +0300] "GET / HTTP/1.1" 302 197 "-" "curl/8.18.0"
+scheduler  | [2026-02-23 17:56:24 +0300] [374036] [ERROR] Connection in use: ('::', 8793)
+scheduler  | [2026-02-23 17:56:24 +0300] [374036] [ERROR] connection to ('::', 8793) failed: [Errno 98] Address already in use
+scheduler  | [2026-02-23 17:56:25 +0300] [374036] [ERROR] Connection in use: ('::', 8793)
+scheduler  | [2026-02-23 17:56:25 +0300] [374036] [ERROR] connection to ('::', 8793) failed: [Errno 98] Address already in use
+scheduler  | [2026-02-23 17:56:26 +0300] [374036] [ERROR] Connection in use: ('::', 8793)
+scheduler  | [2026-02-23 17:56:26 +0300] [374036] [ERROR] connection to ('::', 8793) failed: [Errno 98] Address already in use
+standalone | Airflow is ready
+standalone | Login with username: admin  password: EFxbNe4PayPeEvZ9
+standalone | Airflow Standalone is for development purposes only. Do not use this in production!
+scheduler  | [2026-02-23 17:56:27 +0300] [374036] [ERROR] Can't connect to ('::', 8793)
+webserver  | 127.0.0.1 - - [23/Feb/2026:17:56:35 +0300] "GET / HTTP/1.1" 302 197 "-" "curl/8.18.0"
+triggerer  | [2026-02-23T17:57:22.383+0300] {triggerer_job_runner.py:510} INFO - 0 triggers currently running
+triggerer  | [2026-02-23T17:58:22.431+0300] {triggerer_job_runner.py:510} INFO - 0 triggers currently running
+triggerer  | [2026-02-23T17:59:22.481+0300] {triggerer_job_runner.py:510} INFO - 0 triggers currently running
+triggerer  | [2026-02-23T18:00:22.530+0300] {triggerer_job_runner.py:510} INFO - 0 triggers currently running
+scheduler  | [2026-02-23T18:01:22.303+0300] {scheduler_job_runner.py:1949} INFO - Adopting or resetting orphaned tasks for active dag runs
+triggerer  | [2026-02-23T18:01:22.581+0300] {triggerer_job_runner.py:510} INFO - 0 triggers currently running
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET / HTTP/1.1" 302 197 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET /home HTTP/1.1" 302 287 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | /home/egor/code/rwkv-finetune/.venv312/lib/python3.12/site-packages/airflow/www/security_manager.py:257 AirflowProviderDeprecationWarning: is_authorized_dataset will be renamed as is_authorized_asset in Airflow 3 and will be removed when the minimum Airflow version is set to 3.0 for the fab provider
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET /login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome HTTP/1.1" 200 18637 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET /static/appbuilder/css/bootstrap.min.css HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET /static/appbuilder/css/fontawesome/brands.min.css HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET /static/appbuilder/css/fontawesome/v4-shims.min.css HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET /static/appbuilder/css/bootstrap-datepicker/bootstrap-datepicker3.min.css HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET /static/appbuilder/css/fontawesome/fontawesome.min.css HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET /static/appbuilder/css/select2/select2-bootstrap.min.css HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET /static/appbuilder/css/select2/select2.min.css HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET /static/appbuilder/css/fontawesome/solid.min.css HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET /static/appbuilder/css/flags/flags16.css HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET /static/appbuilder/css/ab.css HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET /static/dist/airflowDefaultTheme.f664c2f31c2dd026f579.css HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET /static/dist/materialIcons.b2aed9f877c993431fde.css HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET /static/dist/main.fb487bd34c7cd20f02bc.css HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET /static/appbuilder/css/fontawesome/regular.min.css HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:48 +0300] "GET /static/dist/bootstrap-datetimepicker.min.css HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:49 +0300] "GET /static/dist/loadingDots.919e5f1534f5f57b7eb4.css HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:49 +0300] "GET /static/appbuilder/js/ab_actions.js HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:49 +0300] "GET /static/appbuilder/js/ab_filters.js HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:49 +0300] "GET /static/appbuilder/js/bootstrap-datepicker/bootstrap-datepicker.min.js HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:49 +0300] "GET /static/dist/flash.65805954dad3c27a3986.css HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:49 +0300] "GET /static/appbuilder/js/ab.js HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:49 +0300] "GET /static/appbuilder/js/select2/select2.min.js HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:49 +0300] "GET /static/appbuilder/js/jquery-latest.js HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:49 +0300] "GET /static/dist/moment.af388b38f7330f0c8f38.js HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:49 +0300] "GET /static/dist/bootstrap3-typeahead.min.js HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:49 +0300] "GET /static/dist/toggleTheme.acf125721c09f1a04027.js HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:49 +0300] "GET /static/appbuilder/css/webfonts/fa-solid-900.woff2 HTTP/1.1" 200 0 "http://127.0.0.1:18080/static/appbuilder/css/fontawesome/solid.min.css" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:49 +0300] "GET /static/dist/bootstrap-datetimepicker.min.js HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:49 +0300] "GET /static/appbuilder/js/bootstrap.min.js HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+webserver  | 127.0.0.1 - - [23/Feb/2026:18:01:49 +0300] "GET /static/dist/main.fb487bd34c7cd20f02bc.js HTTP/1.1" 200 0 "http://127.0.0.1:18080/login/?next=http%3A%2F%2F127.0.0.1%3A18080%2Fhome" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
