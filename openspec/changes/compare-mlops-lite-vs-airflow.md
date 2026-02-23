@@ -2,6 +2,8 @@
 
 Дата: 2026-02-22
 
+Статус на 2026-02-23: решение принято в пользу `refactor-orchestration-to-airflow` как primary orchestration profile; `refactor-mlops-lite-workflow` архивирован как неактуальный.
+
 ## Контекст
 Сравниваются два взаимоисключающих варианта оркестрации training pipeline RWKV v7:
 - `refactor-mlops-lite-workflow`

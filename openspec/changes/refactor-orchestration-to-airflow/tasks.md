@@ -1,6 +1,6 @@
 ## 1. Airflow foundation
 - [ ] 1.1 Добавить базовый runtime-профиль Apache Airflow (конфиг, metadata DB, запуск scheduler/webserver) для WSL-среды.
-- [ ] 1.2 Зафиксировать orchestration profile selection (`mlops-lite` XOR `airflow`) и критерии выбора primary runtime.
+- [ ] 1.2 Зафиксировать primary orchestration policy: `airflow` обязателен как runtime по умолчанию; `mlops-lite` как primary path отклоняется.
 - [ ] 1.3 Определить структуру каталогов Airflow-артефактов и логику хранения state/logs.
 
 ## 2. DAG и task-контракты

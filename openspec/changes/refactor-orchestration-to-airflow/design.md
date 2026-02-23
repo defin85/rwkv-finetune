@@ -1,7 +1,7 @@
 ## Context
 Проект уже имеет стабильные shell-этапы подготовки и обучения, но orchestration-поведение не централизовано: порядок действий, retry и контроль зависимостей поддерживаются вручную.
 
-Пользовательский запрос: подготовить альтернативный вариант архитектуры (вместо `refactor-mlops-lite-workflow`) на Apache Airflow, чтобы затем выбрать один из подходов.
+Пользовательский запрос: зафиксировать Apache Airflow как основной orchestration-путь. `refactor-mlops-lite-workflow` признан неактуальным и архивирован.
 
 Ограничения проекта:
 - локальный WSL-first контур;
@@ -14,16 +14,16 @@
   - Ввести Apache Airflow как orchestrator для train lifecycle.
   - Сохранить существующие скрипты как исполняемые шаги DAG.
   - Добавить управляемые retries, статусы, журналирование и операционный audit trail.
-  - Формализовать policy выбора orchestration-профиля как mutually exclusive режима с MLOps-lite вариантом.
+  - Зафиксировать Airflow как единственный primary orchestration profile и отклонять `mlops-lite` как primary runtime.
 - Non-Goals:
   - Не переносить вычисления в Kubernetes на первом этапе.
   - Не заменять RWKV-PEFT internals.
   - Не делать обязательной внешнюю distributed очередь (Celery/RabbitMQ) в v1.
 
 ## Decisions
-- Decision: Apache Airflow используется как primary scheduler/orchestrator для этого варианта.
+- Decision: Apache Airflow используется как primary scheduler/orchestrator проекта.
   - Why: зрелый DAG runtime, явные зависимости задач, retries и наблюдаемость.
-  - Alternative: оставить file-based orchestration (`refactor-mlops-lite-workflow`).
+  - Alternative: оставить file-based orchestration и ручной shell-run.
   - Trade-off: выше инфраструктурная сложность, чем у MLOps-lite.
 
 - Decision: Executor профиль для v1 — `LocalExecutor` с persistent metadata DB.
@@ -43,9 +43,9 @@
   - Why: adapter release допускается только после PASS по domain/retention eval и quality status датасета.
   - Cross-capability link: правила качества данных берутся из `dataset-development`.
 
-- Decision: Mutual exclusion orchestration profile.
-  - Why: у пользователя два альтернативных архитектурных варианта; одновременный primary-runtime создаёт двусмысленность operational policy.
-  - Policy: в deployment выбирается только один профиль (`mlops-lite` или `airflow`) как canonical execution path.
+- Decision: Primary profile enforcement.
+  - Why: `refactor-mlops-lite-workflow` архивирован как неактуальный; primary-runtime должен быть однозначным.
+  - Policy: deployment MUST задавать `airflow` как primary path. Попытки активировать `mlops-lite` как primary path MUST отклоняться.
 
 ## DAG Contract (v1)
 - `prepare_dataset`:
@@ -66,15 +66,16 @@
   - Mitigation: минимальный installation profile и чёткий runbook.
 - Риск: operational drift между Airflow DAG и shell-скриптами.
   - Mitigation: shell-first контракт и валидация входов/выходов каждой task.
-- Риск: одновременное существование двух альтернативных changes может запутать implementation.
-  - Mitigation: явная фиксация mutually exclusive статуса в спеках и документации.
+- Риск: документационный дрейф после смены решения с MLOps-lite на Airflow.
+  - Mitigation: явная фиксация статуса архивирования MLOps-lite change и Airflow-first policy в спеках и документации.
 
 ## Migration Plan
 1. Зафиксировать capability `airflow-orchestration` в OpenSpec (этот change).
-2. На этапе apply добавить Airflow-структуру (`dags`, конфиг, bootstrap/runbook).
-3. Реализовать DAG, который вызывает существующие `scripts/*.sh` и фиксирует статусы.
-4. Включить blocking release-gates и контроль GPU concurrency.
-5. Провести smoke-run DAG на коротком профиле и обновить docs.
+2. Зафиксировать отказ от MLOps-lite пути: `refactor-mlops-lite-workflow` архивирован как неактуальный (23 февраля 2026).
+3. На этапе apply добавить Airflow-структуру (`dags`, конфиг, bootstrap/runbook).
+4. Реализовать DAG, который вызывает существующие `scripts/*.sh` и фиксирует статусы.
+5. Включить blocking release-gates и контроль GPU concurrency.
+6. Провести smoke-run DAG на коротком профиле и обновить docs.
 
 ## Open Questions
 - Требуется ли в v1 расписание по cron, или достаточно manual trigger + backfill?

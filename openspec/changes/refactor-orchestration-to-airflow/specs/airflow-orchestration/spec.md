@@ -1,14 +1,18 @@
 ## ADDED Requirements
 
 ### Requirement: Airflow-first orchestration profile
-Система MUST поддерживать Apache Airflow как primary orchestration profile для train lifecycle в альтернативном варианте архитектуры.
+Система MUST поддерживать Apache Airflow как primary orchestration profile для train lifecycle.
 
 #### Scenario: Выбор Airflow как primary runtime
 - **WHEN** команда активирует профиль `airflow`
 - **THEN** запуск обучающего pipeline MUST выполняться через Airflow DAG, а не через ad-hoc последовательность ручных shell-команд
 
-### Requirement: Mutual exclusion orchestration policy
-Система MUST обеспечивать взаимоисключающий выбор primary orchestration profile: `mlops-lite` или `airflow`.
+### Requirement: Primary Airflow enforcement policy
+Система MUST использовать `airflow` как единственный primary orchestration profile. Конфигурации с primary=`mlops-lite` или с одновременной активацией `mlops-lite` и `airflow` MUST отклоняться.
+
+#### Scenario: Попытка активировать `mlops-lite` как primary
+- **WHEN** в deployment-конфигурации primary profile установлен в `mlops-lite`
+- **THEN** система MUST отклонять такую конфигурацию и требовать `airflow` как primary path
 
 #### Scenario: Попытка одновременного включения двух primary профилей
 - **WHEN** в deployment-конфигурации одновременно активированы `mlops-lite` и `airflow` как primary path
