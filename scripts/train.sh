@@ -32,7 +32,7 @@ DATA_PREFIX=""
 RUN_NAME=""
 DEVICES="${DEVICES:-1}"
 WANDB_PROJECT="${WANDB_PROJECT:-}"
-DEFAULT_MODEL_CONFIG="${TRAIN_MODEL_CONFIG:-$ROOT_DIR/configs/model/rwkv7-0.4b.env}"
+DEFAULT_MODEL_CONFIG="${TRAIN_MODEL_CONFIG:-$ROOT_DIR/configs/model/rwkv7-7.2b.env}"
 DEFAULT_PROFILE_CONFIG="${TRAIN_PROFILE_CONFIG:-$ROOT_DIR/configs/profile/lora-bf16.env}"
 
 usage() {
@@ -42,7 +42,7 @@ Usage:
 
 Example:
   ./scripts/train.sh \
-    --load-model ./models/base/rwkv7-g1-0.4b-20250324-ctx4096.pth \
+    --load-model ./models/base/rwkv7-g1d-7.2b-20260131-ctx8192.pth \
     --data-prefix ./data/processed/sample_text_document \
     --run-name exp-rwkv7-qlora
 EOF

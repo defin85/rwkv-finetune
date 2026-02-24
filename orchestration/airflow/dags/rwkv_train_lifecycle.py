@@ -21,7 +21,7 @@ GPU_POOL_NAME = os.getenv("AIRFLOW_GPU_POOL_NAME", "rwkv_gpu_pool")
 AUDIT_DIR = Path(os.getenv("AIRFLOW_AUDIT_DIR", str(ROOT_DIR / "orchestration/airflow/runtime/audit")))
 DEFAULT_INPUT_JSONL = str(ROOT_DIR / "data" / "raw" / "identity_hotfix_v3.jsonl")
 DEFAULT_DATASET_MANIFEST = str(ROOT_DIR / "data" / "raw" / "identity_hotfix_v3.manifest.json")
-DEFAULT_LOAD_MODEL = str(ROOT_DIR / "models" / "base" / "rwkv7-g1-0.4b-20250324-ctx4096.pth")
+DEFAULT_LOAD_MODEL = str(ROOT_DIR / "models" / "base" / "rwkv7-g1d-7.2b-20260131-ctx8192.pth")
 DEFAULT_TRAIN_WRAPPER = str(SCRIPTS_DIR / "train_qlora_nf4_identity_safe.sh")
 
 DEFAULT_RETRIES = int(os.getenv("AIRFLOW_TASK_RETRIES", "2"))
