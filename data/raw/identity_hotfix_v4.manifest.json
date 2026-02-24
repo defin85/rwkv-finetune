@@ -1,0 +1,25 @@
+{
+  "dataset_path": "/home/egor/code/rwkv-finetune/data/raw/identity_hotfix_v4.jsonl",
+  "dataset_sha256": "aae14c8d0fdd5ea090c96863ba55c3da3117763c4baf5ab524511bd5f9c8ec8b",
+  "quality_status": "PASS",
+  "quality_reasons": [
+    "quality gates passed"
+  ],
+  "metrics": {
+    "rows_total": 960,
+    "rows_unique": 960,
+    "unique_ratio": 1.0,
+    "user_assistant_rows": 960,
+    "invalid_format_rows": 0,
+    "user_assistant_ratio": 1.0,
+    "identity_rows": 251,
+    "identity_ratio": 0.261458,
+    "identity_rows_missing_rwkv": 0,
+    "qwen_negative_rows": 0,
+    "identity_brand_leak_rows": 0,
+    "transcript_leak_rows": 0,
+    "top1_share": 0.001042,
+    "assistant_length_avg": 132.71,
+    "assistant_length_max": 249
+  }
+}

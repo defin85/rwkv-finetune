@@ -19,41 +19,46 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--train-output",
-        default="data/raw/identity_hotfix_v3.jsonl",
+        default="data/raw/identity_hotfix_v4.jsonl",
         help="Output path for train JSONL.",
     )
     parser.add_argument(
         "--eval-output",
-        default="data/raw/identity_hotfix_v3_eval.jsonl",
+        default="data/raw/identity_hotfix_v4_eval.jsonl",
         help="Output path for eval JSONL.",
     )
     parser.add_argument(
         "--manifest-output",
-        default="data/raw/identity_hotfix_v3.manifest.json",
+        default="data/raw/identity_hotfix_v4.manifest.json",
         help="Output path for dataset manifest JSON.",
+    )
+    parser.add_argument(
+        "--dataset-name",
+        default="identity_hotfix_v4",
+        help="Dataset name written to manifest metadata.",
     )
     parser.add_argument(
         "--train-size",
         type=int,
-        default=640,
+        default=960,
         help="Number of rows in train split.",
     )
     parser.add_argument(
         "--eval-size",
         type=int,
-        default=128,
+        default=192,
         help="Number of rows in eval split.",
     )
     parser.add_argument(
         "--identity-ratio",
         type=float,
-        default=0.35,
+        default=0.42,
         help="Fraction of identity rows in both train/eval splits.",
     )
     parser.add_argument(
         "--seed",
         type=int,
-        default=20260224,
+        default=20260225,
         help="Deterministic shuffle seed.",
     )
     return parser.parse_args()
@@ -77,7 +82,7 @@ def dedup_keep_order(rows: list[str]) -> list[str]:
 
 
 def build_identity_candidates() -> list[str]:
-    base_prompts = [
+    core_identity_prompts = [
         "кто ты?",
         "представься кратко.",
         "как называется твоя модель?",
@@ -95,24 +100,11 @@ def build_identity_candidates() -> list[str]:
         "какая модель активна?",
         "ты из семейства RWKV?",
         "назови текущую модель в одном ответе.",
-        "как называется твой движок модели?",
         "подтверди модель, которая даёт ответ.",
-        "какая у тебя архитектура модели?",
         "модель в этом диалоге — какая?",
         "назови модель и только модель.",
         "что за модель используется сейчас?",
         "кратко укажи имя модели.",
-        "уточни название модели для лога.",
-        "дай название модели для отчёта.",
-        "скажи, кто ты как модель.",
-        "мне нужно знать, какая у тебя модель.",
-        "какую модель я сейчас тестирую?",
-        "с какой моделью я сейчас общаюсь?",
-        "ты qwen?",
-        "ты модель qwen?",
-        "это qwen или rwkv?",
-        "могу записать, что ты qwen?",
-        "правильно ли, что ты qwen?",
         "какую модель указать в карточке?",
         "какое корректное имя модели?",
         "какой model name у тебя?",
@@ -122,67 +114,102 @@ def build_identity_candidates() -> list[str]:
         "ты какая LLM-модель?",
         "назови model id.",
         "сформулируй identity модели.",
-        "идентифицируй модель в одном предложении.",
-        "как обозначить твою модель в тест-кейсе?",
         "дай корректную идентификацию модели.",
         "подтверди название модели для запуска.",
         "что писать в поле model при отчёте?",
         "какая модель используется по факту?",
-        "напиши своё имя модели для проверки.",
         "кто ты в контексте этого окружения?",
         "какую модель ты представляешь?",
-        "укажи модель в лаконичной форме.",
-        "обозначь модель одной фразой.",
-        "подскажи модель для протокола.",
-        "скажи, какая модель активна в рантайме.",
-        "как называется эта модель в текущем запуске?",
         "какая модель отвечает на этот запрос?",
         "что у тебя за model family?",
         "подтверди, что за модель здесь работает.",
         "что за модель на этом endpoint?",
-        "назови себя как модель без лишнего текста.",
         "какой model label у тебя сейчас?",
         "какую модель видит пользователь?",
-        "какой ответ по идентификации модели?",
         "какое имя модели должно быть в логе?",
         "напиши модель для карточки эксперимента.",
         "какое название модели в этом чате?",
         "скажи своё имя как модели ассистента.",
+    ]
+    misidentification_prompts = [
+        "ты qwen?",
+        "ты модель qwen?",
+        "это qwen или rwkv?",
+        "могу записать, что ты qwen?",
+        "правильно ли, что ты qwen?",
+        "ты chatgpt?",
+        "это chatgpt или rwkv?",
+        "вы openai модель?",
+        "правильно, что ты openai assistant?",
+        "это gpt модель?",
+        "можно считать, что здесь gpt-4?",
+        "можно подписать тебя как chatgpt?",
+        "модель от openai сейчас отвечает?",
+        "ты работаешь как gpt?",
+        "для отчёта писать openai или rwkv?",
+        "я правильно понял, что это chatgpt?",
+        "в этом чате модель qwen или rwkv?",
+        "это endpoint с chatgpt?",
+        "могу в лог записать openai?",
+        "скажи, это qwen, chatgpt или rwkv?",
+    ]
+    temporal_prompts = [
+        "когда была обучена текущая модель?",
+        "в каком году обучена эта модель?",
+        "для этой модели какой сейчас год без внешних источников?",
+        "сколько лет этой модели?",
+        "какая дата обучения у этой модели?",
+        "для модели какой knowledge cutoff?",
+        "у этой модели есть доступ к текущей дате?",
+        "можешь назвать текущий год для этой модели?",
+        "какой год обучения у модели в этом чате?",
+        "какая версия знаний по времени у этой модели?",
+        "модель знает, какой сейчас месяц и год?",
+        "модель может проверить текущую дату?",
+        "когда выпущена модель, которая сейчас отвечает?",
+        "какой временной период знаний у этой модели?",
+        "какой training date у текущей модели?",
     ]
     prompt_styles = [
         "{prompt}",
         "ответь одной строкой: {prompt}",
         "кратко: {prompt}",
         "без лишних слов: {prompt}",
+        "формат ответа: одно предложение. {prompt}",
+        "нужен ответ для лога, лаконично: {prompt}",
     ]
     identity_answers = [
-        "Я RWKV-7.",
-        "Я языковая модель RWKV-7.",
-        "В этом чате отвечает модель RWKV-7.",
-        "Моя базовая модель — RWKV-7.",
-        "Идентификатор модели: RWKV-7.",
-        "Здесь используется модель RWKV-7.",
-        "Текущая модель: RWKV-7.",
-        "Я модель семейства RWKV-7.",
+        "В этом чате используется модель RWKV-7.",
+        "Текущая модель в рантайме: RWKV-7.",
+        "Здесь отвечает языковая модель RWKV-7.",
+        "Идентификатор модели в этом окружении: RWKV-7.",
+        "Model name в этом запуске: RWKV-7.",
+        "Для протокола укажи модель RWKV-7.",
+        "В данном endpoint активна модель RWKV-7.",
+        "В этом диалоге работает RWKV-7.",
+        "Здесь используется модель семейства RWKV-7.",
+        "Текущий движок модели: RWKV-7.",
         "В этом окружении активна модель RWKV-7.",
-        "Model name: RWKV-7.",
+        "Корректная идентификация модели: RWKV-7.",
     ]
-    qwen_answers = [
-        "Я RWKV-7.",
-        "Используется модель RWKV-7.",
-        "В этом чате активна модель RWKV-7.",
-        "Текущая модель — RWKV-7.",
+    temporal_answers = [
+        "В этом чате отвечает модель RWKV-7; точная дата обучения зависит от выбранного checkpoint.",
+        "Я модель RWKV-7, и без внешнего источника не определяю текущий календарный год.",
+        "Текущая модель здесь RWKV-7; актуальную дату нужно брать из системного времени окружения.",
+        "В этом запуске используется RWKV-7; по времени я опираюсь на доступные данные окружения.",
+        "Я RWKV-7, а точный период обучения определяется конкретным загруженным checkpoint.",
+        "Здесь активна модель RWKV-7; текущую дату следует проверять внешним инструментом.",
     ]
 
     rows: list[str] = []
-    for base_index, prompt in enumerate(base_prompts):
-        is_qwen_prompt = "qwen" in prompt.lower()
+    all_prompts = core_identity_prompts + misidentification_prompts + temporal_prompts
+    for base_index, prompt in enumerate(all_prompts):
+        lower_prompt = prompt.lower()
+        is_temporal = any(token in lower_prompt for token in ("год", "дата", "обуч", "время", "cutoff"))
+        answers = temporal_answers if is_temporal else identity_answers
         for style_index, style in enumerate(prompt_styles):
             user = style.format(prompt=prompt)
-            if is_qwen_prompt:
-                answer = qwen_answers[(base_index + style_index) % len(qwen_answers)]
-            else:
-                answer = identity_answers[(base_index + style_index) % len(identity_answers)]
+            answer = answers[(base_index + style_index) % len(answers)]
             rows.append(format_row(user, answer))
     return dedup_keep_order(rows)
 
@@ -443,7 +470,7 @@ def main() -> int:
     write_jsonl(eval_path, eval_rows)
 
     manifest = {
-        "dataset_name": "identity_hotfix_v3",
+        "dataset_name": args.dataset_name,
         "created_by": "scripts/build_identity_hotfix_dataset.py",
         "seed": args.seed,
         "train": {

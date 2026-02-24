@@ -18,6 +18,12 @@ USER_ASSISTANT_PATTERN = re.compile(
 )
 QWEN_KEYWORD_PATTERN = re.compile(r"\bqwen\b", re.IGNORECASE)
 NEGATIVE_PATTERN = re.compile(r"\b(нет|не\s+qwen|not|no)\b", re.IGNORECASE)
+TRANSCRIPT_MARKER_PATTERN = re.compile(r"\b(User|Assistant)\s*:", re.IGNORECASE)
+IDENTITY_BRAND_PATTERNS = (
+    re.compile(r"\bchatgpt\b", re.IGNORECASE),
+    re.compile(r"\bopenai\b", re.IGNORECASE),
+    re.compile(r"\bgpt(?:-[0-9]+(?:\.[0-9]+)?)?\b", re.IGNORECASE),
+)
 IDENTITY_KEYWORDS = [
     "кто ты",
     "модель",
@@ -45,6 +51,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-identity-ratio", type=float, default=0.25)
     parser.add_argument("--max-top1-share", type=float, default=0.05)
     parser.add_argument("--max-qwen-negative-rows", type=int, default=0)
+    parser.add_argument("--max-identity-brand-leak-rows", type=int, default=0)
+    parser.add_argument("--max-transcript-leak-rows", type=int, default=0)
     return parser.parse_args()
 
 
@@ -83,14 +91,12 @@ def evaluate(rows: list[str], args: argparse.Namespace) -> dict[str, Any]:
     identity_rows = 0
     qwen_negative_rows = 0
     assistant_missing_rwkv_rows = 0
+    identity_brand_leak_rows = 0
+    transcript_leak_rows = 0
     assistant_lengths: list[int] = []
     top_counter = Counter(rows)
 
     for row in rows:
-        if row.count("User:") != 1 or row.count("Assistant:") != 1:
-            invalid_format_rows += 1
-            continue
-
         match = USER_ASSISTANT_PATTERN.match(row)
         if not match:
             invalid_format_rows += 1
@@ -100,6 +106,8 @@ def evaluate(rows: list[str], args: argparse.Namespace) -> dict[str, Any]:
         user = " ".join(match.group("user").strip().split())
         assistant = " ".join(match.group("assistant").strip().split())
         assistant_lengths.append(len(assistant))
+        if TRANSCRIPT_MARKER_PATTERN.search(assistant):
+            transcript_leak_rows += 1
 
         is_identity = any(keyword in user.lower() for keyword in IDENTITY_KEYWORDS)
         if is_identity:
@@ -108,6 +116,8 @@ def evaluate(rows: list[str], args: argparse.Namespace) -> dict[str, Any]:
                 assistant_missing_rwkv_rows += 1
             if QWEN_KEYWORD_PATTERN.search(user) and NEGATIVE_PATTERN.search(assistant):
                 qwen_negative_rows += 1
+            if any(pattern.search(assistant) for pattern in IDENTITY_BRAND_PATTERNS):
+                identity_brand_leak_rows += 1
 
     user_assistant_ratio = format_ok / row_count if row_count else 0.0
     identity_ratio = identity_rows / row_count if row_count else 0.0
@@ -136,6 +146,16 @@ def evaluate(rows: list[str], args: argparse.Namespace) -> dict[str, Any]:
             "qwen_negative_rows="
             f"{qwen_negative_rows} > max_qwen_negative_rows={args.max_qwen_negative_rows}"
         )
+    if identity_brand_leak_rows > args.max_identity_brand_leak_rows:
+        reasons.append(
+            "identity_brand_leak_rows="
+            f"{identity_brand_leak_rows} > max_identity_brand_leak_rows={args.max_identity_brand_leak_rows}"
+        )
+    if transcript_leak_rows > args.max_transcript_leak_rows:
+        reasons.append(
+            "transcript_leak_rows="
+            f"{transcript_leak_rows} > max_transcript_leak_rows={args.max_transcript_leak_rows}"
+        )
     if assistant_missing_rwkv_rows > 0:
         reasons.append(f"identity_rows_missing_rwkv={assistant_missing_rwkv_rows}")
 
@@ -154,6 +174,8 @@ def evaluate(rows: list[str], args: argparse.Namespace) -> dict[str, Any]:
             "identity_ratio": round(identity_ratio, 6),
             "identity_rows_missing_rwkv": assistant_missing_rwkv_rows,
             "qwen_negative_rows": qwen_negative_rows,
+            "identity_brand_leak_rows": identity_brand_leak_rows,
+            "transcript_leak_rows": transcript_leak_rows,
             "top1_share": round(top1_share, 6),
             "assistant_length_avg": round(sum(assistant_lengths) / len(assistant_lengths), 2)
             if assistant_lengths

@@ -163,34 +163,35 @@ Operational procedures:
 
 - `docs/airflow-runbook.md`
 
-## Identity Hotfix v3 (Recommended)
+## Identity Hotfix v4 (Recommended)
 
-`identity_hotfix_v3` is the default identity fine-tune dataset with replay mix and strict chat format.
+`identity_hotfix_v4` is the default identity fine-tune dataset with replay mix, stronger identity coverage, and stricter leakage quality gates.
 
 1. Build train/eval splits and manifest:
 
 ```bash
 python scripts/build_identity_hotfix_dataset.py \
-  --train-output data/raw/identity_hotfix_v3.jsonl \
-  --eval-output data/raw/identity_hotfix_v3_eval.jsonl \
-  --manifest-output data/raw/identity_hotfix_v3.manifest.json
+  --train-output data/raw/identity_hotfix_v4.jsonl \
+  --eval-output data/raw/identity_hotfix_v4_eval.jsonl \
+  --manifest-output data/raw/identity_hotfix_v4.manifest.json \
+  --dataset-name identity_hotfix_v4
 ```
 
 2. Validate quality gates:
 
 ```bash
 python scripts/check_dataset_quality.py \
-  --input data/raw/identity_hotfix_v3.jsonl \
-  --output data/raw/identity_hotfix_v3.manifest.json \
+  --input data/raw/identity_hotfix_v4.jsonl \
+  --output data/raw/identity_hotfix_v4.manifest.json \
   --strict
 ```
 
-3. Trigger Airflow pipeline with v3 config:
+3. Trigger Airflow pipeline with v4 config:
 
 ```bash
 ./scripts/run_pipeline.sh \
-  --run-id identity-hotfix-v3-001 \
-  --conf-file /home/egor/code/rwkv-finetune/configs/airflow/identity_hotfix_v3.conf.json
+  --run-id identity-hotfix-v4-001 \
+  --conf-file /home/egor/code/rwkv-finetune/configs/airflow/identity_hotfix_v4.conf.json
 ```
 
 If DAG is triggered from UI without custom `Config`, defaults are read from `configs/workspace.env` via:

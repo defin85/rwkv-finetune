@@ -57,13 +57,13 @@ grep -n '^ORCHESTRATION_PROFILE=' configs/workspace.env
 
 ```json
 {
-  "input_jsonl": "/home/egor/code/rwkv-finetune/data/raw/identity_hotfix_v3.jsonl",
-  "dataset_manifest": "/home/egor/code/rwkv-finetune/data/raw/identity_hotfix_v3.manifest.json",
-  "output_prefix": "/home/egor/code/rwkv-finetune/data/processed/identity_hotfix_v3",
-  "data_prefix": "/home/egor/code/rwkv-finetune/data/processed/identity_hotfix_v3_text_document",
+  "input_jsonl": "/home/egor/code/rwkv-finetune/data/raw/identity_hotfix_v4.jsonl",
+  "dataset_manifest": "/home/egor/code/rwkv-finetune/data/raw/identity_hotfix_v4.manifest.json",
+  "output_prefix": "/home/egor/code/rwkv-finetune/data/processed/identity_hotfix_v4",
+  "data_prefix": "/home/egor/code/rwkv-finetune/data/processed/identity_hotfix_v4_text_document",
   "load_model": "/home/egor/code/rwkv-finetune/models/base/rwkv7-g1-0.4b-20250324-ctx4096.pth",
-  "run_name": "identity-hotfix-v3-001",
-  "train_wrapper": "/home/egor/code/rwkv-finetune/scripts/train_qlora_nf4_identity_safe.sh"
+  "run_name": "identity-hotfix-v4-001",
+  "train_wrapper": "/home/egor/code/rwkv-finetune/scripts/train_qlora_nf4_identity_v4.sh"
 }
 ```
 
@@ -71,7 +71,7 @@ grep -n '^ORCHESTRATION_PROFILE=' configs/workspace.env
 
 ```bash
 ./scripts/run_pipeline.sh \
-  --run-id identity-hotfix-v3-001 \
+  --run-id identity-hotfix-v4-001 \
   --conf-file /path/to/conf.json
 ```
 

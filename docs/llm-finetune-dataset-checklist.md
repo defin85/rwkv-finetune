@@ -62,8 +62,8 @@
 
 ```bash
 python scripts/check_dataset_quality.py \
-  --input data/raw/identity_hotfix_v3.jsonl \
-  --output data/raw/identity_hotfix_v3.manifest.json \
+  --input data/raw/identity_hotfix_v4.jsonl \
+  --output data/raw/identity_hotfix_v4.manifest.json \
   --strict
 ```
 
@@ -75,6 +75,8 @@ python scripts/check_dataset_quality.py \
 - `min_identity_ratio=0.25` (для identity-набора)
 - `max_top1_share=0.05`
 - `max_qwen_negative_rows=0`
+- `max_identity_brand_leak_rows=0`
+- `max_transcript_leak_rows=0`
 
 - [ ] `quality_status = PASS`
 - [ ] Нет критических причин в `quality_reasons`
@@ -95,9 +97,10 @@ python scripts/check_dataset_quality.py \
 
 ```bash
 python scripts/build_identity_hotfix_dataset.py \
-  --train-output data/raw/identity_hotfix_v3.jsonl \
-  --eval-output data/raw/identity_hotfix_v3_eval.jsonl \
-  --manifest-output data/raw/identity_hotfix_v3.manifest.json
+  --train-output data/raw/identity_hotfix_v4.jsonl \
+  --eval-output data/raw/identity_hotfix_v4_eval.jsonl \
+  --manifest-output data/raw/identity_hotfix_v4.manifest.json \
+  --dataset-name identity_hotfix_v4
 ```
 
 ## 9) Запуск через Airflow
@@ -106,8 +109,8 @@ CLI-триггер с конфигом:
 
 ```bash
 ./scripts/run_pipeline.sh \
-  --run-id identity-hotfix-v3-001 \
-  --conf-file /home/egor/code/rwkv-finetune/configs/airflow/identity_hotfix_v3.conf.json
+  --run-id identity-hotfix-v4-001 \
+  --conf-file /home/egor/code/rwkv-finetune/configs/airflow/identity_hotfix_v4.conf.json
 ```
 
 Перед запуском:
@@ -160,4 +163,3 @@ CLI-триггер с конфигом:
   - https://docs.aws.amazon.com/bedrock/latest/userguide/model-customization-prepare.html
 - Google Vertex tuning data prep:
   - https://cloud.google.com/vertex-ai/generative-ai/docs/models/translation-supervised-tuning-prepare
-
