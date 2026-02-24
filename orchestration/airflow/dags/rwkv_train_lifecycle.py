@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -18,9 +19,10 @@ RUNS_DIR = ROOT_DIR / "runs"
 DEFAULT_DAG_ID = os.getenv("AIRFLOW_DAG_ID", "rwkv_train_lifecycle")
 GPU_POOL_NAME = os.getenv("AIRFLOW_GPU_POOL_NAME", "rwkv_gpu_pool")
 AUDIT_DIR = Path(os.getenv("AIRFLOW_AUDIT_DIR", str(ROOT_DIR / "orchestration/airflow/runtime/audit")))
-DEFAULT_INPUT_JSONL = str(ROOT_DIR / "data" / "raw" / "identity_hotfix_ui_train.jsonl")
+DEFAULT_INPUT_JSONL = str(ROOT_DIR / "data" / "raw" / "identity_hotfix_v3.jsonl")
+DEFAULT_DATASET_MANIFEST = str(ROOT_DIR / "data" / "raw" / "identity_hotfix_v3.manifest.json")
 DEFAULT_LOAD_MODEL = str(ROOT_DIR / "models" / "base" / "rwkv7-g1-0.4b-20250324-ctx4096.pth")
-DEFAULT_TRAIN_WRAPPER = str(SCRIPTS_DIR / "train_qlora_nf4_quick.sh")
+DEFAULT_TRAIN_WRAPPER = str(SCRIPTS_DIR / "train_qlora_nf4_identity_safe.sh")
 
 DEFAULT_RETRIES = int(os.getenv("AIRFLOW_TASK_RETRIES", "2"))
 DEFAULT_RETRY_DELAY_SECONDS = int(os.getenv("AIRFLOW_RETRY_DELAY_SECONDS", "60"))
@@ -73,7 +75,7 @@ def _dag_conf(context: dict[str, Any]) -> dict[str, Any]:
         "devices": _conf_or_env(conf, "devices", "1"),
         "wandb_project": _conf_or_env(conf, "wandb_project", ""),
         "train_wrapper": train_wrapper,
-        "dataset_manifest": _conf_or_env(conf, "dataset_manifest", ""),
+        "dataset_manifest": _conf_or_env(conf, "dataset_manifest", DEFAULT_DATASET_MANIFEST),
         "dataset_quality_status": _conf_or_env(conf, "dataset_quality_status", "PASS").upper(),
         "domain_eval_verdict": _conf_or_env(conf, "domain_eval_verdict", "PASS").upper(),
         "retention_eval_verdict": _conf_or_env(conf, "retention_eval_verdict", "PASS").upper(),
@@ -130,6 +132,14 @@ def _run_shell(context: dict[str, Any], task_id: str, command: list[str]) -> Non
         raise AirflowFailException(f"{task_id} failed with exit code {exc.returncode}") from exc
 
 
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _write_gate_result(run_name: str, gate: str, verdict: str, reason: str) -> None:
     gate_path = RUNS_DIR / run_name / "gates" / f"{gate}.json"
     _write_json(
@@ -172,7 +182,7 @@ def prepare_dataset(**context: Any) -> None:
 def check_dataset_quality(**context: Any) -> None:
     conf = _dag_conf(context)
     status = conf["dataset_quality_status"]
-    reason = "dataset_quality_status=PASS"
+    reason = f"dataset_quality_status={status}"
 
     if conf["dataset_manifest"]:
         manifest_path = Path(conf["dataset_manifest"])
@@ -183,6 +193,35 @@ def check_dataset_quality(**context: Any) -> None:
             raise AirflowFailException(reason)
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         status = str(manifest.get("quality_status", status)).upper()
+        expected_dataset = str(Path(conf["input_jsonl"]).resolve())
+        manifest_dataset = str(manifest.get("dataset_path", "")).strip()
+        if manifest_dataset and manifest_dataset != expected_dataset:
+            reason = (
+                "dataset_manifest dataset_path mismatch: "
+                f"manifest={manifest_dataset}, expected={expected_dataset}"
+            )
+            _write_gate_result(conf["run_name"], "dataset_quality_gate", "FAIL", reason)
+            _write_audit(context, "check_dataset_quality", "failed", {"reason": reason})
+            raise AirflowFailException(reason)
+
+        expected_sha = str(manifest.get("dataset_sha256", "")).strip().lower()
+        if expected_sha:
+            input_path = Path(conf["input_jsonl"])
+            if not input_path.is_file():
+                reason = f"input_jsonl not found for checksum verification: {input_path}"
+                _write_gate_result(conf["run_name"], "dataset_quality_gate", "FAIL", reason)
+                _write_audit(context, "check_dataset_quality", "failed", {"reason": reason})
+                raise AirflowFailException(reason)
+            actual_sha = _sha256_file(input_path).lower()
+            if actual_sha != expected_sha:
+                reason = (
+                    "dataset_manifest checksum mismatch: "
+                    f"manifest={expected_sha}, actual={actual_sha}"
+                )
+                _write_gate_result(conf["run_name"], "dataset_quality_gate", "FAIL", reason)
+                _write_audit(context, "check_dataset_quality", "failed", {"reason": reason})
+                raise AirflowFailException(reason)
+
         reason = f"dataset_manifest quality_status={status}"
 
     if status != "PASS":

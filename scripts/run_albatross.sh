@@ -10,6 +10,7 @@ if [ -f "$WORKSPACE_ENV" ]; then
 fi
 
 VENV_DIR="${VENV_DIR:-$ROOT_DIR/.venv}"
+CUDA_HOME="${CUDA_HOME:-/opt/cuda}"
 DEFAULT_MODEL="${ALBATROSS_MODEL:-}"
 DEFAULT_PROMPT="${ALBATROSS_PROMPT:-User: explain recursion in Python. Assistant:}"
 DEFAULT_TOKENS="${ALBATROSS_TOKENS:-128}"
@@ -76,6 +77,18 @@ if [ -f "$VENV_DIR/bin/activate" ]; then
   source "$VENV_DIR/bin/activate"
 fi
 
+export CUDA_HOME
+if [ -d "$CUDA_HOME/bin" ]; then
+  export PATH="$CUDA_HOME/bin:$PATH"
+fi
+if [ -d "$CUDA_HOME/lib64" ]; then
+  if [ -n "${LD_LIBRARY_PATH:-}" ]; then
+    export LD_LIBRARY_PATH="$CUDA_HOME/lib64:$LD_LIBRARY_PATH"
+  else
+    export LD_LIBRARY_PATH="$CUDA_HOME/lib64"
+  fi
+fi
+
 CMD=(
   python "$ROOT_DIR/scripts/infer_albatross.py"
   --model "$MODEL"
@@ -94,4 +107,3 @@ echo
 echo
 
 "${CMD[@]}"
-

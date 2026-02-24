@@ -74,6 +74,7 @@ INPUT_JSONL="$SMOKE_ROOT/input.jsonl"
 OUTPUT_PREFIX="$SMOKE_ROOT/data/sample"
 DATA_PREFIX="${OUTPUT_PREFIX}_text_document"
 CONF_JSON="$SMOKE_ROOT/conf.json"
+DATASET_MANIFEST="$SMOKE_ROOT/input.manifest.json"
 MODEL_PLACEHOLDER="$SMOKE_ROOT/models/smoke-model.pth"
 EVAL_SUMMARY="$ROOT_DIR/runs/$RUN_NAME/eval_summary.json"
 RELEASE_MANIFEST="$ROOT_DIR/runs/$RUN_NAME/release_manifest.json"
@@ -94,23 +95,36 @@ EOF
 
 printf "smoke model placeholder\n" >"$MODEL_PLACEHOLDER"
 
-python - "$CONF_JSON" "$INPUT_JSONL" "$OUTPUT_PREFIX" "$DATA_PREFIX" "$MODEL_PLACEHOLDER" "$RUN_NAME" "$EVAL_SUMMARY" "$RELEASE_MANIFEST" <<'PY'
+python "$ROOT_DIR/scripts/check_dataset_quality.py" \
+  --input "$INPUT_JSONL" \
+  --output "$DATASET_MANIFEST" \
+  --min-rows 1 \
+  --min-unique-ratio 1.0 \
+  --min-user-assistant-ratio 1.0 \
+  --min-identity-ratio 0.0 \
+  --max-top1-share 1.0 \
+  --max-qwen-negative-rows 1 \
+  --strict
+
+python - "$CONF_JSON" "$INPUT_JSONL" "$DATASET_MANIFEST" "$OUTPUT_PREFIX" "$DATA_PREFIX" "$MODEL_PLACEHOLDER" "$RUN_NAME" "$EVAL_SUMMARY" "$RELEASE_MANIFEST" <<'PY'
 import json
 import sys
 
 (
     conf_path,
     input_jsonl,
+    dataset_manifest,
     output_prefix,
     data_prefix,
     model_placeholder,
     run_name,
     eval_summary,
     release_manifest,
-) = sys.argv[1:9]
+) = sys.argv[1:10]
 
 payload = {
     "input_jsonl": input_jsonl,
+    "dataset_manifest": dataset_manifest,
     "output_prefix": output_prefix,
     "data_prefix": data_prefix,
     "load_model": model_placeholder,

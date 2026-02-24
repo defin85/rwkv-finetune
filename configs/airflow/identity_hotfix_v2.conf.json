@@ -1,0 +1,11 @@
+{
+  "input_jsonl": "/home/egor/code/rwkv-finetune/data/raw/identity_hotfix_v2.jsonl",
+  "output_prefix": "/home/egor/code/rwkv-finetune/data/processed/identity_hotfix_v2",
+  "data_prefix": "/home/egor/code/rwkv-finetune/data/processed/identity_hotfix_v2_text_document",
+  "load_model": "/home/egor/code/rwkv-finetune/models/base/rwkv7-g1-0.4b-20250324-ctx4096.pth",
+  "run_name": "identity-hotfix-v2-001",
+  "train_wrapper": "/home/egor/code/rwkv-finetune/scripts/train_qlora_nf4_quick.sh",
+  "dataset_quality_status": "PASS",
+  "domain_eval_verdict": "PASS",
+  "retention_eval_verdict": "PASS"
+}

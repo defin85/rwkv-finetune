@@ -1,0 +1,23 @@
+{
+  "dataset_name": "identity_hotfix_v3",
+  "created_by": "scripts/build_identity_hotfix_dataset.py",
+  "seed": 20260224,
+  "train": {
+    "path": "/home/egor/code/rwkv-finetune/data/raw/identity_hotfix_v3.jsonl",
+    "rows_total": 640,
+    "rows_identity": 224,
+    "rows_replay": 416,
+    "sha256": "9e3f95d1a72e422ef90ced7b904f7e22fcedde1f336a2a41f7a170874d4350b7"
+  },
+  "eval": {
+    "path": "/home/egor/code/rwkv-finetune/data/raw/identity_hotfix_v3_eval.jsonl",
+    "rows_total": 128,
+    "rows_identity": 45,
+    "rows_replay": 83,
+    "sha256": "8cefd3007f60c425b16dea2a6fdfa4840e349dc9c6154eddc0f223a888ccac14"
+  },
+  "candidate_inventory": {
+    "identity_candidates": 280,
+    "replay_candidates": 741
+  }
+}
