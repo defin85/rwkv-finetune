@@ -9,7 +9,15 @@ if [ -f "$WORKSPACE_ENV" ]; then
   source "$WORKSPACE_ENV"
 fi
 
-VENV_DIR="${VENV_DIR:-$ROOT_DIR/.venv312}"
+VENV_DIR="${VENV_DIR:-}"
+# Auto-detect repo venv if VENV_DIR is not set (or points to a missing env).
+if [ -z "$VENV_DIR" ] || [ ! -f "$VENV_DIR/bin/activate" ]; then
+  if [ -f "$ROOT_DIR/.venv312/bin/activate" ]; then
+    VENV_DIR="$ROOT_DIR/.venv312"
+  elif [ -f "$ROOT_DIR/.venv/bin/activate" ]; then
+    VENV_DIR="$ROOT_DIR/.venv"
+  fi
+fi
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 GGUF_CONVERTER="${RWKV_GGUF_CONVERTER:-/tmp/rwkv-convert/convert_rwkv_pth_to_gguf.py}"
 GGUF_VOCAB="${RWKV_GGUF_VOCAB:-/tmp/rwkv-convert/rwkv_vocab_v20230424.txt}"
@@ -86,9 +94,16 @@ need_cmd() {
 }
 
 activate_venv_if_present() {
-  if [ -f "$VENV_DIR/bin/activate" ]; then
+  if [ -n "$VENV_DIR" ] && [ -f "$VENV_DIR/bin/activate" ]; then
     # shellcheck disable=SC1090
     source "$VENV_DIR/bin/activate"
+    if [ -x "$VENV_DIR/bin/python" ]; then
+      PYTHON_BIN="$VENV_DIR/bin/python"
+    fi
+    return
+  fi
+  if [ -n "${VIRTUAL_ENV:-}" ] && [ -x "${VIRTUAL_ENV}/bin/python" ]; then
+    PYTHON_BIN="${VIRTUAL_ENV}/bin/python"
   fi
 }
 
@@ -377,6 +392,12 @@ fi
 if [ "$FORCE_CONVERT" = "1" ] || [ ! -f "$GGUF_PATH" ]; then
   echo "Building GGUF: $GGUF_PATH"
   if ! ensure_python_deps >/dev/null 2>&1; then
+    if [ -z "${VIRTUAL_ENV:-}" ]; then
+      echo "Missing python deps (torch/numpy/gguf) and no virtualenv is active." >&2
+      echo "Activate venv first or set VENV_DIR to a valid environment." >&2
+      echo "Example: source \"$ROOT_DIR/.venv312/bin/activate\"" >&2
+      exit 1
+    fi
     "$PYTHON_BIN" -m pip install --quiet numpy gguf
   fi
   "$PYTHON_BIN" "$GGUF_CONVERTER" "$PTH_PATH" "$GGUF_VOCAB" --outfile "$GGUF_PATH" --outtype "$OUTTYPE"

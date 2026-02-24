@@ -193,18 +193,8 @@ def check_dataset_quality(**context: Any) -> None:
             raise AirflowFailException(reason)
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         status = str(manifest.get("quality_status", status)).upper()
-        expected_dataset = str(Path(conf["input_jsonl"]).resolve())
-        manifest_dataset = str(manifest.get("dataset_path", "")).strip()
-        if manifest_dataset and manifest_dataset != expected_dataset:
-            reason = (
-                "dataset_manifest dataset_path mismatch: "
-                f"manifest={manifest_dataset}, expected={expected_dataset}"
-            )
-            _write_gate_result(conf["run_name"], "dataset_quality_gate", "FAIL", reason)
-            _write_audit(context, "check_dataset_quality", "failed", {"reason": reason})
-            raise AirflowFailException(reason)
-
         expected_sha = str(manifest.get("dataset_sha256", "")).strip().lower()
+        actual_sha = ""
         if expected_sha:
             input_path = Path(conf["input_jsonl"])
             if not input_path.is_file():
@@ -222,7 +212,36 @@ def check_dataset_quality(**context: Any) -> None:
                 _write_audit(context, "check_dataset_quality", "failed", {"reason": reason})
                 raise AirflowFailException(reason)
 
-        reason = f"dataset_manifest quality_status={status}"
+        expected_dataset = str(Path(conf["input_jsonl"]).resolve())
+        manifest_dataset = str(manifest.get("dataset_path", "")).strip()
+        if manifest_dataset and manifest_dataset != expected_dataset:
+            # Absolute paths differ across environments (local vs CI). If checksum matches, treat path
+            # mismatch as non-fatal because dataset identity is already verified.
+            if expected_sha and actual_sha == expected_sha:
+                reason = (
+                    "dataset_manifest quality_status="
+                    f"{status} (dataset_path mismatch tolerated by checksum)"
+                )
+                _write_audit(
+                    context,
+                    "check_dataset_quality",
+                    "dataset_path_mismatch_tolerated",
+                    {
+                        "manifest_dataset_path": manifest_dataset,
+                        "expected_dataset_path": expected_dataset,
+                        "dataset_sha256": expected_sha,
+                    },
+                )
+            else:
+                reason = (
+                    "dataset_manifest dataset_path mismatch: "
+                    f"manifest={manifest_dataset}, expected={expected_dataset}"
+                )
+                _write_gate_result(conf["run_name"], "dataset_quality_gate", "FAIL", reason)
+                _write_audit(context, "check_dataset_quality", "failed", {"reason": reason})
+                raise AirflowFailException(reason)
+        else:
+            reason = f"dataset_manifest quality_status={status}"
 
     if status != "PASS":
         reason = f"Dataset quality gate failed: {reason}"

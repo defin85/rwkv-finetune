@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 import sys
 import tempfile
 import types
@@ -79,8 +80,16 @@ class AirflowGateLogicTests(unittest.TestCase):
         root = Path(self.tmp.name)
         self.module.RUNS_DIR = root / "runs"
         self.module.AUDIT_DIR = root / "audit"
+        self._saved_env = {name: os.environ.get(name) for name in ["RWKV_AIRFLOW_INPUT_JSONL", "RWKV_AIRFLOW_DATASET_MANIFEST"]}
+        os.environ.pop("RWKV_AIRFLOW_INPUT_JSONL", None)
+        os.environ.pop("RWKV_AIRFLOW_DATASET_MANIFEST", None)
 
     def tearDown(self):
+        for name, value in self._saved_env.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
         self.tmp.cleanup()
 
     def context(self, conf):
@@ -101,8 +110,60 @@ class AirflowGateLogicTests(unittest.TestCase):
 
     def test_dataset_quality_fail_raises_and_writes_fail_gate(self):
         run_name = "dataset-fail"
+        root = Path(self.tmp.name)
+        manifest_path = root / "manifest-fail.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "quality_status": "FAIL",
+                }
+            ),
+            encoding="utf-8",
+        )
         with self.assertRaises(self.airflow_fail):
-            self.module.check_dataset_quality(**self.context({"run_name": run_name, "dataset_quality_status": "FAIL"}))
+            self.module.check_dataset_quality(
+                **self.context(
+                    {
+                        "run_name": run_name,
+                        "dataset_quality_status": "FAIL",
+                        "dataset_manifest": str(manifest_path),
+                    }
+                )
+            )
+        gate_path = self.module.RUNS_DIR / run_name / "gates" / "dataset_quality_gate.json"
+        self.assertTrue(gate_path.is_file())
+        payload = json.loads(gate_path.read_text(encoding="utf-8"))
+        self.assertEqual(payload["verdict"], "FAIL")
+
+    def test_dataset_manifest_path_mismatch_without_checksum_fails(self):
+        run_name = "dataset-path-mismatch"
+        root = Path(self.tmp.name)
+        dataset_path = root / "data.jsonl"
+        dataset_path.write_text('{"text":"User: test\\nAssistant: ok"}\n', encoding="utf-8")
+
+        manifest_path = root / "manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "dataset_path": "/tmp/other-location/data.jsonl",
+                    "quality_status": "PASS",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        with self.assertRaises(self.airflow_fail):
+            self.module.check_dataset_quality(
+                **self.context(
+                    {
+                        "run_name": run_name,
+                        "dataset_quality_status": "PASS",
+                        "input_jsonl": str(dataset_path),
+                        "dataset_manifest": str(manifest_path),
+                    }
+                )
+            )
+
         gate_path = self.module.RUNS_DIR / run_name / "gates" / "dataset_quality_gate.json"
         self.assertTrue(gate_path.is_file())
         payload = json.loads(gate_path.read_text(encoding="utf-8"))
