@@ -11,6 +11,19 @@ fi
 
 RWKV_PEFT_DIR="${RWKV_PEFT_DIR:-$ROOT_DIR/third_party/RWKV-PEFT}"
 VENV_DIR="${VENV_DIR:-$ROOT_DIR/.venv}"
+CUDA_HOME="${CUDA_HOME:-/opt/cuda}"
+
+if [ -d "$CUDA_HOME/bin" ]; then
+  export CUDA_HOME
+  export PATH="$CUDA_HOME/bin:$PATH"
+fi
+if [ -d "$CUDA_HOME/lib64" ]; then
+  if [ -n "${LD_LIBRARY_PATH:-}" ]; then
+    export LD_LIBRARY_PATH="$CUDA_HOME/lib64:$LD_LIBRARY_PATH"
+  else
+    export LD_LIBRARY_PATH="$CUDA_HOME/lib64"
+  fi
+fi
 
 MODEL_CONFIG=""
 PROFILE_CONFIG=""
@@ -19,7 +32,7 @@ DATA_PREFIX=""
 RUN_NAME=""
 DEVICES="${DEVICES:-1}"
 WANDB_PROJECT="${WANDB_PROJECT:-}"
-DEFAULT_MODEL_CONFIG="${TRAIN_MODEL_CONFIG:-$ROOT_DIR/configs/model/rwkv7-1.5b.env}"
+DEFAULT_MODEL_CONFIG="${TRAIN_MODEL_CONFIG:-$ROOT_DIR/configs/model/rwkv7-0.4b.env}"
 DEFAULT_PROFILE_CONFIG="${TRAIN_PROFILE_CONFIG:-$ROOT_DIR/configs/profile/lora-bf16.env}"
 
 usage() {
@@ -29,7 +42,7 @@ Usage:
 
 Example:
   ./scripts/train.sh \
-    --load-model ./models/base/rwkv7-1.5b.pth \
+    --load-model ./models/base/rwkv7-g1-0.4b-20250324-ctx4096.pth \
     --data-prefix ./data/processed/sample_text_document \
     --run-name exp-rwkv7-qlora
 EOF
@@ -165,7 +178,7 @@ PROJ_DIR="$ROOT_DIR/runs/$RUN_NAME"
 mkdir -p "$PROJ_DIR"
 
 CMD=(
-  python "$RWKV_PEFT_DIR/train.py"
+  python train.py
   --load_model "$LOAD_MODEL"
   --proj_dir "$PROJ_DIR"
   --data_file "$DATA_PREFIX"
@@ -214,4 +227,7 @@ printf ' %q' "${CMD[@]}"
 echo
 echo
 
-"${CMD[@]}"
+(
+  cd "$RWKV_PEFT_DIR"
+  "${CMD[@]}"
+)

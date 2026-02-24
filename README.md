@@ -103,7 +103,7 @@ cat > /tmp/rwkv-airflow-conf.json <<'EOF'
   "input_jsonl": "/home/egor/code/rwkv-finetune/data/raw/sample.jsonl",
   "output_prefix": "/home/egor/code/rwkv-finetune/data/processed/sample",
   "data_prefix": "/home/egor/code/rwkv-finetune/data/processed/sample_text_document",
-  "load_model": "/home/egor/code/rwkv-finetune/models/base/YOUR_MODEL.pth",
+  "load_model": "/home/egor/code/rwkv-finetune/models/base/rwkv7-g1-0.4b-20250324-ctx4096.pth",
   "run_name": "rwkv-airflow-manual-001"
 }
 EOF
@@ -137,14 +137,14 @@ Direct wrapper execution remains available for local debugging:
 ```bash
 ./scripts/prepare_binidx.sh data/raw/sample.jsonl data/processed/sample
 ./scripts/train.sh \
-  --load-model /home/egor/code/rwkv-finetune/models/base/YOUR_MODEL.pth \
+  --load-model /home/egor/code/rwkv-finetune/models/base/rwkv7-g1-0.4b-20250324-ctx4096.pth \
   --data-prefix /home/egor/code/rwkv-finetune/data/processed/sample_text_document \
   --run-name rwkv7-lora-test
 ```
 
 `train.sh` accepts explicit `--model/--profile` or defaults from:
 
-- `TRAIN_MODEL_CONFIG` (default `configs/model/rwkv7-1.5b.env`)
+- `TRAIN_MODEL_CONFIG` (default `configs/model/rwkv7-0.4b.env`)
 - `TRAIN_PROFILE_CONFIG` (default `configs/profile/lora-bf16.env`)
 
 ## Model configs
@@ -155,7 +155,7 @@ Available model presets:
 - `configs/model/rwkv7-1.5b.env`
 - `configs/model/rwkv7-3b.env`
 
-Default wrappers use `rwkv7-1.5b`.
+Default wrappers use `rwkv7-0.4b`.
 
 ## Runbook
 
@@ -169,7 +169,7 @@ For local RWKV inference via `BlinkDL/Albatross`:
 
 ```bash
 python scripts/infer_albatross.py \
-  --model /home/egor/code/rwkv-finetune/models/base/rwkv7-g1-1.5b-20250429-ctx4096.pth \
+  --model /home/egor/code/rwkv-finetune/models/base/rwkv7-g1-0.4b-20250324-ctx4096.pth \
   --prompt "User: explain recursion in Python. Assistant:" \
   --tokens 128 \
   --batch 1 \
@@ -179,6 +179,6 @@ python scripts/infer_albatross.py \
 Shortcut wrapper:
 
 ```bash
-ALBATROSS_MODEL=/home/egor/code/rwkv-finetune/models/base/rwkv7-g1-1.5b-20250429-ctx4096.pth \
+ALBATROSS_MODEL=/home/egor/code/rwkv-finetune/models/base/rwkv7-g1-0.4b-20250324-ctx4096.pth \
 ./scripts/run_albatross.sh --auto-clone --tokens 128
 ```

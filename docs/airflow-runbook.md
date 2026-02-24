@@ -60,7 +60,7 @@ grep -n '^ORCHESTRATION_PROFILE=' configs/workspace.env
   "input_jsonl": "/home/egor/code/rwkv-finetune/data/raw/sample.jsonl",
   "output_prefix": "/home/egor/code/rwkv-finetune/data/processed/sample",
   "data_prefix": "/home/egor/code/rwkv-finetune/data/processed/sample_text_document",
-  "load_model": "/home/egor/code/rwkv-finetune/models/base/YOUR_MODEL.pth",
+  "load_model": "/home/egor/code/rwkv-finetune/models/base/rwkv7-g1-0.4b-20250324-ctx4096.pth",
   "run_name": "rwkv-airflow-manual-001"
 }
 ```

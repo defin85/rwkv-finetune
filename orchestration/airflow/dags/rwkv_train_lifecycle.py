@@ -18,6 +18,9 @@ RUNS_DIR = ROOT_DIR / "runs"
 DEFAULT_DAG_ID = os.getenv("AIRFLOW_DAG_ID", "rwkv_train_lifecycle")
 GPU_POOL_NAME = os.getenv("AIRFLOW_GPU_POOL_NAME", "rwkv_gpu_pool")
 AUDIT_DIR = Path(os.getenv("AIRFLOW_AUDIT_DIR", str(ROOT_DIR / "orchestration/airflow/runtime/audit")))
+DEFAULT_INPUT_JSONL = str(ROOT_DIR / "data" / "raw" / "identity_hotfix_ui_train.jsonl")
+DEFAULT_LOAD_MODEL = str(ROOT_DIR / "models" / "base" / "rwkv7-g1-0.4b-20250324-ctx4096.pth")
+DEFAULT_TRAIN_WRAPPER = str(SCRIPTS_DIR / "train_qlora_nf4_quick.sh")
 
 DEFAULT_RETRIES = int(os.getenv("AIRFLOW_TASK_RETRIES", "2"))
 DEFAULT_RETRY_DELAY_SECONDS = int(os.getenv("AIRFLOW_RETRY_DELAY_SECONDS", "60"))
@@ -60,13 +63,13 @@ def _dag_conf(context: dict[str, Any]) -> dict[str, Any]:
     data_prefix = _conf_or_env(conf, "data_prefix", f"{output_prefix}_text_document")
     eval_summary_path = _conf_or_env(conf, "eval_summary_path", str(RUNS_DIR / run_name / "eval_summary.json"))
     release_manifest_path = _conf_or_env(conf, "release_manifest_path", str(RUNS_DIR / run_name / "release_manifest.json"))
-    train_wrapper = _conf_or_env(conf, "train_wrapper", str(SCRIPTS_DIR / "train.sh"))
+    train_wrapper = _conf_or_env(conf, "train_wrapper", DEFAULT_TRAIN_WRAPPER)
     return {
         "run_name": run_name,
-        "input_jsonl": _conf_or_env(conf, "input_jsonl", ""),
+        "input_jsonl": _conf_or_env(conf, "input_jsonl", DEFAULT_INPUT_JSONL),
         "output_prefix": output_prefix,
         "data_prefix": data_prefix,
-        "load_model": _conf_or_env(conf, "load_model", ""),
+        "load_model": _conf_or_env(conf, "load_model", DEFAULT_LOAD_MODEL),
         "devices": _conf_or_env(conf, "devices", "1"),
         "wandb_project": _conf_or_env(conf, "wandb_project", ""),
         "train_wrapper": train_wrapper,
