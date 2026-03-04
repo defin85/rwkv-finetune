@@ -9,6 +9,7 @@ third_party/RWKV-PEFT/
 
 data/processed/*
 !data/processed/.gitkeep
+data/external/reference_datasets/
 
 models/base/*
 !models/base/.gitkeep
