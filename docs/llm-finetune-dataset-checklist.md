@@ -127,6 +127,36 @@ CLI-триггер с конфигом:
 - [ ] Нет циклов/развала формата на smoke-промптах.
 - [ ] Артефакты run содержат gate/eval/release manifests.
 
+## 11) 1C-Expert-v4 профиль (операционный)
+
+Профиль:
+- `configs/dataset/1c-expert-v4.profile.json`
+
+Сборка train-текста:
+
+```bash
+python scripts/build_1c_expert_v4_dataset.py \
+  --profile configs/dataset/1c-expert-v4.profile.json \
+  --bsl-root /path/to/onec/configuration \
+  --coding-jsonl /path/to/coding.jsonl \
+  --ru-jsonl /path/to/ru_identity.jsonl \
+  --output-text data/raw/1c_expert_v4_train.txt \
+  --report-output data/raw/1c_expert_v4.release.report.json
+```
+
+Обязательные gate-проверки профиля:
+- [ ] mix `50/30/20` по сегментам (`onec_bsl/coding_general/ru_identity`) в допуске ±5 п.п.
+- [ ] покрытие модулей 1C: `common`, `manager`, `object`.
+- [ ] в каждом sample есть `Instruction:` + `Response:` + `<|endoftext|>`.
+- [ ] нет сырых JSON-объектов в train-text.
+- [ ] размер train-text не ниже `200 MB` (или явно заданного override для тестового режима).
+
+Smoke-проверка:
+
+```bash
+./scripts/smoke_1c_expert_v4.sh
+```
+
 ---
 
 ## Быстрый anti-pattern список

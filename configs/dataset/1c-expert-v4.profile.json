@@ -1,0 +1,53 @@
+{
+  "profile_id": "1c-expert-v4",
+  "version": 1,
+  "description": "Operational profile for 1C-Expert-v4 dataset release.",
+  "volume": {
+    "target_min_mb": 500,
+    "target_max_mb": 1024,
+    "hard_min_mb": 200
+  },
+  "mix": {
+    "onec_bsl": 0.5,
+    "coding_general": 0.3,
+    "ru_identity": 0.2,
+    "tolerance_pp": 5
+  },
+  "required_provenance_fields": [
+    "source",
+    "license",
+    "origin_ref",
+    "segment"
+  ],
+  "release_gates": {
+    "require_shuffle": true,
+    "forbid_raw_json_objects_in_train_text": true,
+    "require_eot_per_sample": true
+  },
+  "source_allowlist": [
+    {
+      "dataset_id": "ise-uiuc/MagicCoder-Evol-Instruct-110K",
+      "segment": "coding_general",
+      "license": "open",
+      "origin_ref": "https://huggingface.co/datasets/ise-uiuc/MagicCoder-Evol-Instruct-110K"
+    },
+    {
+      "dataset_id": "sahil2801/CodeAlpaca-20k",
+      "segment": "coding_general",
+      "license": "open",
+      "origin_ref": "https://huggingface.co/datasets/sahil2801/CodeAlpaca-20k"
+    },
+    {
+      "dataset_id": "IlyaGusev/saiga_scored",
+      "segment": "ru_identity",
+      "license": "mixed",
+      "origin_ref": "https://huggingface.co/datasets/IlyaGusev/saiga_scored"
+    },
+    {
+      "dataset_id": "IlyaGusev/ru_turbo_alpaca",
+      "segment": "ru_identity",
+      "license": "mixed",
+      "origin_ref": "https://huggingface.co/datasets/IlyaGusev/ru_turbo_alpaca"
+    }
+  ]
+}

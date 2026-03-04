@@ -20,6 +20,7 @@ The goal is finetuning for 1C:Enterprise programming tasks while preserving gene
   - LoRA BF16
   - QLoRA NF4
   - QLoRA INT8
+- Dataset builder for `1C-Expert-v4` release profile (plain text + release gates)
 
 ## Folder layout
 
@@ -196,6 +197,41 @@ python scripts/check_dataset_quality.py \
 
 If DAG is triggered from UI without custom `Config`, defaults are read from `configs/workspace.env` via:
 `RWKV_AIRFLOW_INPUT_JSONL`, `RWKV_AIRFLOW_DATASET_MANIFEST`, `RWKV_AIRFLOW_TRAIN_WRAPPER`.
+
+## 1C-Expert-v4 Dataset Pipeline
+
+Machine-readable profile:
+
+- `configs/dataset/1c-expert-v4.profile.json`
+
+Builder command (produces plain text `Instruction/Response + <|endoftext|>` and release report):
+
+```bash
+python scripts/build_1c_expert_v4_dataset.py \
+  --profile configs/dataset/1c-expert-v4.profile.json \
+  --bsl-root /path/to/onec/configuration \
+  --coding-jsonl /path/to/coding.jsonl \
+  --ru-jsonl /path/to/ru_identity.jsonl \
+  --output-text data/raw/1c_expert_v4_train.txt \
+  --report-output data/raw/1c_expert_v4.release.report.json
+```
+
+Output report includes:
+
+- module coverage (`common/manager/object`)
+- mix counters (`onec_bsl/coding_general/ru_identity`)
+- format gates (raw JSON object detection, `<|endoftext|>`, `Instruction/Response`)
+- hard minimum size gate (default from profile: `200 MB`)
+
+Smoke command (build + `prepare_binidx.sh` + artifact check):
+
+```bash
+./scripts/smoke_1c_expert_v4.sh
+```
+
+Expected binidx data prefix from smoke:
+
+- `<tmp>/processed/smoke_text_document`
 
 ## Albatross inference
 
