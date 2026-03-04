@@ -88,6 +88,11 @@ def format_sample(sample):
 *   Арендуй **RTX 4090 (24GB)** на 5-8 часов.
 *   Параметры обучения: `LoRA_R=64`, `LoRA_Alpha=128`, `ctx_len=1024` (минимум) или `2048` (лучше).
 
+**Рекомендуемые провайдеры аренды GPU:**
+*   [lambda.ai](https://lambda.ai)
+*   [runpod.io](https://runpod.io)
+*   [vast.ai](https://vast.ai)
+
 **Ссылки на инструменты:**
 *   [RWKV-v7-Fine-Tuning (Original)](https://github.com/BlinkDL/RWKV-LM) — всегда сверяйся с основным репозиторием BlinkDL.
 *   [Dataset-Converter-Example](https://github.com/BlinkDL/RWKV-LM/blob/main/RWKV-v5/make_data.py) — пример того, как официально готовятся бинарные файлы.
