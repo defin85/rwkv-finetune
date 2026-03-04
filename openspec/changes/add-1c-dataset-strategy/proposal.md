@@ -16,12 +16,16 @@
   - рефакторинг: 35%;
   - запросы 1C: 15%;
   - объяснение/ревью: 15%.
+- Фиксируется разделение уровней контракта:
+  - стратегический уровень хранит канонический `sample` в виде `user_prompt`/`assistant_response` + provenance;
+  - профильный уровень определяет релизную сериализацию train-текста (например, для `1C-Expert-v4`: `Instruction/Response + <|endoftext|>`).
 - Добавляются обязательные quality gates: dedup, синтаксическая и статическая проверка BSL, фильтры секретов/PII, контроль leakage.
 - Определяется стратегия оценки: отдельные eval-наборы, репозиторно-временной split, регулярный цикл recuration по ошибкам модели.
 
 ## Impact
 - Affected specs: `dataset-development` (new capability).
 - Affected code:
-  - `scripts/prepare_binidx.sh` (как целевой consumer формата `jsonl` с ключом `text`);
+  - `scripts/prepare_binidx.sh` (как целевой consumer релизного train-артефакта через профильный formatter/export adapter);
   - `scripts/train.sh` (как target runtime для `data_prefix`);
   - `README.md` и документация по датасетам (будут требовать синхронизации на этапе реализации).
+  - profile-level change `add-1c-expert-v4-dataset-profile` (как конкретизация формата/allowlist/mix для одного релизного профиля).

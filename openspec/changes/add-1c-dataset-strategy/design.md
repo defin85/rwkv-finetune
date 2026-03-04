@@ -1,5 +1,5 @@
 ## Context
-Проект дообучает RWKV v7 под 1C:Enterprise программирование и уже имеет рабочий pipeline `jsonl -> binidx -> train` через `scripts/prepare_binidx.sh` и `scripts/train.sh`.
+Проект дообучает RWKV v7 под 1C:Enterprise программирование и уже имеет рабочий pipeline токенизации/обучения через `scripts/prepare_binidx.sh` и `scripts/train.sh`.
 
 Критическая проблема сейчас не в отсутствии тренировки, а в отсутствии формального data lifecycle: откуда берутся данные, как проверяются, как делятся на train/eval, как версионируются и как измеряется улучшение.
 
@@ -52,11 +52,23 @@
   - Alternatives considered:
     - Случайный split: проще, но выше риск near-dup leakage.
 
+- Decision: Разделение канонического контракта sample и релизной сериализации.
+  - Rationale: стратегия должна быть стабильной для разных профилей релиза и не зависеть от конкретного formatter.
+  - Канонический контракт:
+    - `user_prompt` (обязательное поле, RU-policy применяется здесь);
+    - `assistant_response`;
+    - `metadata` (category/provenance/license/split/quality).
+  - Профильный контракт:
+    - конкретный wire-format train-артефакта определяется release profile;
+    - для `1C-Expert-v4` используется `Instruction/Response + <|endoftext|>`.
+  - Alternatives considered:
+    - Жёстко закрепить один физический формат (`jsonl{text}` или plain text) на уровне стратегии: проще старт, но создаёт конфликт между профилями и усложняет эволюцию пайплайна.
+
 ## Data Model
 - Dataset release:
   - `version`: семантическая версия датасета (`v0`, `v1`, ...).
   - `contour`: `core` или `extended`.
-  - `samples`: массив записей `{"text": "User: ...\nAssistant: ..."}`.
+  - `samples`: массив канонических записей с `user_prompt`/`assistant_response` и metadata.
   - `manifest`: метаданные происхождения и проверок.
 
 - Manifest (минимальные поля):
@@ -64,13 +76,13 @@
 
 ## Release Flow
 1. Ingest источников.
-2. Нормализация в единый формат prompt/response.
+2. Нормализация в канонический sample-контракт (`user_prompt`/`assistant_response` + metadata).
 3. Классификация по task taxonomy.
 4. Dedup (exact + near).
 5. Quality gates (BSL parse/diagnostics, secrets/PII, language policy).
 6. Split в train/eval по репозиториям и времени.
 7. Заморозка версии (`manifest` + артефакты).
-8. Экспорт `train.jsonl` в формат совместимый с `prepare_binidx.sh`.
+8. Профильная сериализация train-артефакта (formatter/export adapter) в формат, совместимый с `prepare_binidx.sh`.
 9. Post-train evaluation и backlog hard-cases для следующей версии.
 
 ## Risks / Trade-offs
@@ -88,6 +100,7 @@
 - Доли генерации и рефакторинга должны быть паритетными в пределах допуска.
 - Все пользовательские промпты в train/eval должны быть на русском языке.
 - Любой образец без provenance/license в `extended` контуре исключается из релиза.
+- Для выбранного release profile должны быть пройдены форматные gate-проверки релизной сериализации.
 
 ## Migration Plan
 1. Зафиксировать capability и требования в OpenSpec.
