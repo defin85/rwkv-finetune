@@ -233,6 +233,47 @@ Expected binidx data prefix from smoke:
 
 - `<tmp>/processed/smoke_text_document`
 
+## Trusted Repo-Family Builder
+
+Для локального trusted-корпуса из нескольких sibling 1C-репозиториев используйте отдельный builder:
+
+```bash
+python scripts/build_repo_family_trusted_corpus.py \
+  --family-manifest /path/to/repo-family.manifest.json \
+  --train-output data/raw/repo_family_train.jsonl \
+  --dev-output data/raw/repo_family_dev.jsonl \
+  --eval-output data/raw/repo_family_eval.jsonl \
+  --report-output data/raw/repo_family.release.report.json \
+  --hard-min-mb 200
+```
+
+Минимальный `repo_family_manifest`:
+
+```json
+{
+  "source_family_id": "rolf-family",
+  "repo_roots": [
+    "/abs/path/to/DO_Rolf",
+    "/abs/path/to/GetDocflowEvents"
+  ],
+  "canonical_snapshot_root": "/abs/path/to/DO_Rolf",
+  "training_permission": true,
+  "usage_policy": "internal-training",
+  "license": "internal",
+  "origin_ref": "local://rolf-family"
+}
+```
+
+Builder:
+
+- рассматривает sibling-репозитории как один `source family`;
+- канонизирует snapshot по `canonical_snapshot_root`;
+- исключает `.epf`-связанные BSL-модули из trusted `v1`;
+- строит `history_method_change` только из локализуемых git-коммитов;
+- формирует `core/onec_bsl` sample с русским `user_prompt`;
+- выносит поздние history changes в `dev/eval` и удаляет exact/near duplicates из train;
+- блокирует релиз, если `attained_unique_volume_mb < hard_min_mb`.
+
 ## Albatross inference
 
 For local RWKV inference via `BlinkDL/Albatross`:

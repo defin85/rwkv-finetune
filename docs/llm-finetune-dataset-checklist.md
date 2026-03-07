@@ -157,6 +157,29 @@ Smoke-проверка:
 ./scripts/smoke_1c_expert_v4.sh
 ```
 
+## 12) Trusted local repo-family (1C)
+
+Если источник собирается из нескольких локальных git-репозиториев одной конфигурации:
+
+- [ ] Есть `repo_family_manifest` с `source_family_id`, `repo_roots[]`, `canonical_snapshot_root`, `training_permission`, `usage_policy`, `license`, `origin_ref`.
+- [ ] sibling-репозитории рассматриваются как один `source family`, а не как независимые train/eval boundary.
+- [ ] Выполнена snapshot canonicalization и зафиксированы `identical_overlap_paths` / `conflict_paths`.
+- [ ] `.epf`-связанные BSL-модули исключены из trusted `v1`.
+- [ ] История git используется только для локализуемых BSL-изменений; широкие коммиты пропускаются с явной причиной.
+- [ ] `dev/eval` формируются из поздних lineage changes; train очищен от exact/near duplicates относительно holdout.
+- [ ] `attained_unique_volume_mb` не ниже обязательного hard minimum, иначе релиз блокируется.
+
+Команда сборки:
+
+```bash
+python scripts/build_repo_family_trusted_corpus.py \
+  --family-manifest /path/to/repo-family.manifest.json \
+  --train-output data/raw/repo_family_train.jsonl \
+  --dev-output data/raw/repo_family_dev.jsonl \
+  --eval-output data/raw/repo_family_eval.jsonl \
+  --report-output data/raw/repo_family.release.report.json
+```
+
 ---
 
 ## Быстрый anti-pattern список
