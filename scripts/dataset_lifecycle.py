@@ -6,10 +6,17 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import sys
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from bsl_diagnostics import diagnose_bsl_text
 
 
 TASK_CATEGORIES = (
@@ -57,10 +64,7 @@ EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECAS
 PHONE_RE = re.compile(r"(?:\+?\d[\d()\-\s]{9,}\d)")
 PRIVATE_KEY_RE = re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")
 TOKEN_RE = re.compile(r"\b(?:api[_-]?key|token|secret|password)\b\s*[:=]\s*\S+", re.IGNORECASE)
-PROC_RE = re.compile(r"(?im)^\s*Процедура\b")
-END_PROC_RE = re.compile(r"(?im)^\s*КонецПроцедуры\b")
-FUNC_RE = re.compile(r"(?im)^\s*Функция\b")
-END_FUNC_RE = re.compile(r"(?im)^\s*КонецФункции\b")
+BSL_MARKER_RE = re.compile(r"\b(?:Процедура|Функция|КонецПроцедуры|КонецФункции|Если|КонецЕсли)\b", re.IGNORECASE)
 
 
 def now_iso8601() -> str:
@@ -276,14 +280,9 @@ def has_secret_or_pii(row: dict[str, Any]) -> bool:
 def bsl_diagnostics(row: dict[str, Any]) -> list[str]:
     segment = str(row.get("metadata", {}).get("segment", ""))
     text = str(row.get("assistant_response", ""))
-    if segment != "onec_bsl" and not any(token in text for token in ("Процедура", "Функция", "КонецПроцедуры", "КонецФункции")):
+    if segment != "onec_bsl" and not BSL_MARKER_RE.search(text):
         return []
-    reasons: list[str] = []
-    if len(PROC_RE.findall(text)) != len(END_PROC_RE.findall(text)):
-        reasons.append("bsl_unbalanced_procedures")
-    if len(FUNC_RE.findall(text)) != len(END_FUNC_RE.findall(text)):
-        reasons.append("bsl_unbalanced_functions")
-    return reasons
+    return diagnose_bsl_text(text)
 
 
 def duplicate_stats(rows: list[dict[str, Any]]) -> dict[str, int]:
@@ -511,11 +510,52 @@ def build_license_summary(rows_by_split: dict[str, list[dict[str, Any]]]) -> dic
     }
 
 
+def iso8601_from_timestamp(value: int) -> str:
+    return datetime.fromtimestamp(value, tz=timezone.utc).replace(microsecond=0).isoformat()
+
+
+def resolve_manifest_created_at(
+    rows_by_split: dict[str, list[dict[str, Any]]],
+    explicit_created_at: str | None = None,
+    time_keys: tuple[str, ...] = DEFAULT_TIME_METADATA_KEYS,
+) -> tuple[str, dict[str, Any]]:
+    if explicit_created_at is not None:
+        timestamp = parse_temporal_value(explicit_created_at)
+        return iso8601_from_timestamp(timestamp), {
+            "source": "explicit",
+            "time_keys_considered": list(time_keys),
+        }
+
+    timestamps: list[int] = []
+    for rows in rows_by_split.values():
+        for row in rows:
+            for key in time_keys:
+                value = row_metadata_value(row, key)
+                if value is None or (isinstance(value, str) and not value.strip()):
+                    continue
+                try:
+                    timestamps.append(parse_temporal_value(value))
+                except ValueError:
+                    continue
+
+    if timestamps:
+        return iso8601_from_timestamp(max(timestamps)), {
+            "source": "max_source_timestamp",
+            "time_keys_considered": list(time_keys),
+        }
+
+    return "1970-01-01T00:00:00+00:00", {
+        "source": "fixed_epoch_fallback",
+        "time_keys_considered": list(time_keys),
+    }
+
+
 def build_release_manifest(
     dataset_name: str,
     dataset_version: str,
     created_by: str,
     rows_by_split: dict[str, list[dict[str, Any]]],
+    created_at: str | None = None,
     split_artifacts: dict[str, dict[str, Any]] | None = None,
     sampling_policy: dict[str, Any] | None = None,
     split_policy: dict[str, Any] | None = None,
@@ -621,10 +661,12 @@ def build_release_manifest(
             "artifact": artifact,
         }
 
+    manifest_created_at, created_at_policy = resolve_manifest_created_at(normalized, explicit_created_at=created_at)
     manifest = {
         "dataset_name": dataset_name,
         "dataset_version": dataset_version,
-        "created_at": now_iso8601(),
+        "created_at": manifest_created_at,
+        "created_at_policy": created_at_policy,
         "created_by": created_by,
         "storage_layout": STAGE_DIRS,
         "canonical_sample_contract": {

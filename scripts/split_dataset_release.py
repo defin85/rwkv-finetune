@@ -47,6 +47,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dataset-version", default="v0", help="Dataset version label.")
     parser.add_argument("--created-by", default="scripts/split_dataset_release.py")
     parser.add_argument(
+        "--created-at",
+        help="Optional release timestamp override. Defaults to deterministic source-derived policy.",
+    )
+    parser.add_argument(
         "--repo-key",
         action="append",
         default=None,
@@ -108,6 +112,7 @@ def main() -> int:
         dataset_version=args.dataset_version,
         created_by=args.created_by,
         rows_by_split=manifest_rows,
+        created_at=args.created_at,
         split_artifacts={
             "train": artifact_summary(train_output, len(manifest_rows["train"])),
             "eval_generation": artifact_summary(eval_generation_output, len(manifest_rows["eval_generation"])),

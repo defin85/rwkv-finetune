@@ -25,6 +25,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dev", help="Path to canonical dev JSONL.")
     parser.add_argument("--eval", help="Path to canonical eval JSONL.")
     parser.add_argument("--created-by", default="scripts/validate_dataset_release.py")
+    parser.add_argument(
+        "--created-at",
+        help="Optional release timestamp override. Defaults to deterministic source-derived policy.",
+    )
     parser.add_argument("--enforce-balance", action="store_true", help="Enable baseline category balance gate.")
     parser.add_argument(
         "--require-eval-category",
@@ -65,6 +69,7 @@ def main() -> int:
         dataset_version=args.dataset_version,
         created_by=args.created_by,
         rows_by_split=rows_by_split,
+        created_at=args.created_at,
         split_artifacts=split_artifacts,
         enforce_balance=args.enforce_balance,
         required_eval_categories=tuple(args.require_eval_category),

@@ -5,9 +5,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections import Counter
 from pathlib import Path
 from typing import Any
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from eval_summary_contract import validate_eval_summary
 
 
 def parse_args() -> argparse.Namespace:
@@ -112,7 +119,7 @@ def build_markdown(summary: dict[str, Any]) -> str:
 def main() -> int:
     args = parse_args()
     manifest = read_json(Path(args.manifest).resolve())
-    eval_summary = read_json(Path(args.eval_summary).resolve())
+    eval_summary = validate_eval_summary(read_json(Path(args.eval_summary).resolve()))
     summary = build_summary(manifest, eval_summary)
 
     output_md = Path(args.output_md).resolve()
@@ -128,4 +135,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        raise SystemExit(1) from exc

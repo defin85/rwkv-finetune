@@ -113,8 +113,9 @@ python scripts/validate_dataset_release.py \
 ```
 
 - [ ] В manifest есть `source_summary`, `license_summary`, `sampling_policy`, `dedup_policy`, `split_policy`.
+- [ ] `created_at_policy.source` отражает deterministic source timestamp policy или явный override.
 - [ ] Train/Eval leakage = `0` по exact и near hash.
-- [ ] Для 1C sample нет BSL syntax/shape нарушений на release gate.
+- [ ] Для 1C sample нет BSL diagnostics-level нарушений на release gate.
 
 Для repo/time split с отдельными eval bucket'ами:
 
@@ -162,6 +163,9 @@ python scripts/build_dataset_v0_report.py \
   --output-md docs/reports/example-v0-report.md \
   --output-json docs/reports/example-v0-report.json
 ```
+
+- [ ] `eval_summary.json` содержит `domain_eval.categories`, `retention_eval.categories` и `hard_cases`.
+- [ ] `scripts/evaluate_adapter.sh` собирает summary из machine-readable runtime artifacts, а не только из verdict flags.
 
 Для `scripts/build_1c_expert_v4_dataset.py`:
 - [ ] `coding-jsonl` и `ru-jsonl` проходят lifecycle validation до profile serialization.

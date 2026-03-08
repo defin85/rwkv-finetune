@@ -111,6 +111,29 @@ class DatasetLifecycleContractTests(unittest.TestCase):
         reasons = self.module.validate_category_balance(counts)
         self.assertTrue(any("category_balance[code_generation]" in reason for reason in reasons))
 
+    def test_bsl_diagnostics_flags_mismatched_routine_end_and_unclosed_if(self):
+        row = self.module.build_canonical_row(
+            user_prompt="Проверь код процедуры 1С.",
+            assistant_response=(
+                "Функция РассчитатьСумму(Значение) Экспорт\n"
+                "    Если Значение > 0 Тогда\n"
+                "        Возврат Значение;\n"
+                "КонецПроцедуры"
+            ),
+            metadata={
+                "source": "unit-test",
+                "license": "internal",
+                "origin_ref": "local://unit",
+                "contour": "core",
+                "segment": "onec_bsl",
+                "split": "train",
+                "category": "code_generation",
+            },
+        )
+        reasons = self.module.bsl_diagnostics(row)
+        self.assertTrue(any("bsl_mismatched_routine_end" in reason for reason in reasons))
+        self.assertTrue(any("bsl_unclosed_if" in reason for reason in reasons))
+
     def test_build_release_manifest_contains_required_strategy_sections(self):
         train_rows = [
             self.module.build_canonical_row(
@@ -164,6 +187,65 @@ class DatasetLifecycleContractTests(unittest.TestCase):
         self.assertIn("quality_status", manifest)
         self.assertEqual(manifest["splits"]["train"]["rows_total"], 1)
         self.assertEqual(manifest["splits"]["eval"]["rows_total"], 1)
+
+    def test_build_release_manifest_uses_deterministic_created_at_from_source_timestamps(self):
+        train_rows = [
+            self.module.build_canonical_row(
+                user_prompt="Напиши функцию для расчета скидки.",
+                assistant_response="def discount(order):\n    return 1",
+                metadata={
+                    "source": "unit-test",
+                    "license": "internal",
+                    "origin_ref": "local://repo-a",
+                    "contour": "core",
+                    "segment": "coding_general",
+                    "split": "train",
+                    "category": "code_generation",
+                    "commit_timestamp": "2025-02-01T10:00:00+00:00",
+                },
+            )
+        ]
+        eval_rows = [
+            self.module.build_canonical_row(
+                user_prompt="Рефакторни функцию для расчета скидки.",
+                assistant_response="def discount(order):\n    return bool(order)",
+                metadata={
+                    "source": "unit-test",
+                    "license": "internal",
+                    "origin_ref": "local://repo-a",
+                    "contour": "core",
+                    "segment": "coding_general",
+                    "split": "eval",
+                    "category": "refactoring",
+                    "commit_timestamp": "2025-02-03T11:30:00+00:00",
+                },
+            )
+        ]
+
+        manifest_a = self.module.build_release_manifest(
+            dataset_name="unit-dataset",
+            dataset_version="v0",
+            created_by="tests/test_dataset_lifecycle_contract.py",
+            rows_by_split={"train": train_rows, "eval": eval_rows},
+            split_artifacts={
+                "train": {"path": "/tmp/train.jsonl", "sha256": "abc", "rows_total": 1},
+                "eval": {"path": "/tmp/eval.jsonl", "sha256": "def", "rows_total": 1},
+            },
+        )
+        manifest_b = self.module.build_release_manifest(
+            dataset_name="unit-dataset",
+            dataset_version="v0",
+            created_by="tests/test_dataset_lifecycle_contract.py",
+            rows_by_split={"train": train_rows, "eval": eval_rows},
+            split_artifacts={
+                "train": {"path": "/tmp/train.jsonl", "sha256": "abc", "rows_total": 1},
+                "eval": {"path": "/tmp/eval.jsonl", "sha256": "def", "rows_total": 1},
+            },
+        )
+
+        self.assertEqual(manifest_a["created_at"], "2025-02-03T11:30:00+00:00")
+        self.assertEqual(manifest_a["created_at"], manifest_b["created_at"])
+        self.assertEqual(manifest_a["created_at_policy"]["source"], "max_source_timestamp")
 
     def test_split_rows_by_repo_time_creates_dedicated_eval_buckets(self):
         rows = [

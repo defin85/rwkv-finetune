@@ -100,6 +100,35 @@ class AirflowGateLogicTests(unittest.TestCase):
             "ts_nodash": "20260223T000000",
         }
 
+    def eval_summary_payload(self, domain_verdict="PASS", retention_verdict="PASS"):
+        overall_verdict = "PASS" if domain_verdict == "PASS" and retention_verdict == "PASS" else "FAIL"
+        return {
+            "overall_verdict": overall_verdict,
+            "domain_eval": {
+                "verdict": domain_verdict,
+                "categories": {
+                    "code_generation": {
+                        "verdict": domain_verdict,
+                        "score": 0.81,
+                        "samples_total": 8,
+                        "failures_total": 0 if domain_verdict == "PASS" else 2,
+                    }
+                },
+            },
+            "retention_eval": {
+                "verdict": retention_verdict,
+                "categories": {
+                    "ru_general": {
+                        "verdict": retention_verdict,
+                        "score": 0.79,
+                        "samples_total": 5,
+                        "failures_total": 0 if retention_verdict == "PASS" else 1,
+                    }
+                },
+            },
+            "hard_cases": [],
+        }
+
     def test_dataset_quality_pass_writes_pass_gate(self):
         run_name = "dataset-pass"
         self.module.check_dataset_quality(**self.context({"run_name": run_name, "dataset_quality_status": "PASS"}))
@@ -174,13 +203,7 @@ class AirflowGateLogicTests(unittest.TestCase):
         summary_path = self.module.RUNS_DIR / run_name / "eval_summary.json"
         summary_path.parent.mkdir(parents=True, exist_ok=True)
         summary_path.write_text(
-            json.dumps(
-                {
-                    "domain_eval": {"verdict": "PASS"},
-                    "retention_eval": {"verdict": "FAIL"},
-                    "overall_verdict": "FAIL",
-                }
-            ),
+            json.dumps(self.eval_summary_payload(domain_verdict="PASS", retention_verdict="FAIL")),
             encoding="utf-8",
         )
 
@@ -199,13 +222,7 @@ class AirflowGateLogicTests(unittest.TestCase):
         summary_path = self.module.RUNS_DIR / run_name / "eval_summary.json"
         summary_path.parent.mkdir(parents=True, exist_ok=True)
         summary_path.write_text(
-            json.dumps(
-                {
-                    "domain_eval": {"verdict": "PASS"},
-                    "retention_eval": {"verdict": "PASS"},
-                    "overall_verdict": "PASS",
-                }
-            ),
+            json.dumps(self.eval_summary_payload()),
             encoding="utf-8",
         )
 
@@ -215,6 +232,32 @@ class AirflowGateLogicTests(unittest.TestCase):
         self.assertTrue(gate_path.is_file())
         payload = json.loads(gate_path.read_text(encoding="utf-8"))
         self.assertEqual(payload["verdict"], "PASS")
+
+    def test_eval_gate_fails_closed_when_category_summaries_missing(self):
+        run_name = "eval-missing-categories"
+        summary_path = self.module.RUNS_DIR / run_name / "eval_summary.json"
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        summary_path.write_text(
+            json.dumps(
+                {
+                    "domain_eval": {"verdict": "PASS"},
+                    "retention_eval": {"verdict": "PASS"},
+                    "overall_verdict": "PASS",
+                    "hard_cases": [],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        with self.assertRaises(self.airflow_fail):
+            self.module.check_eval_gates(
+                **self.context({"run_name": run_name, "eval_summary_path": str(summary_path)})
+            )
+
+        gate_path = self.module.RUNS_DIR / run_name / "gates" / "eval_gate.json"
+        self.assertTrue(gate_path.is_file())
+        payload = json.loads(gate_path.read_text(encoding="utf-8"))
+        self.assertEqual(payload["verdict"], "FAIL")
 
 
 if __name__ == "__main__":

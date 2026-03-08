@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,11 @@ from airflow.operators.python import PythonOperator
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 SCRIPTS_DIR = ROOT_DIR / "scripts"
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from eval_summary_contract import validate_eval_summary
+
 RUNS_DIR = ROOT_DIR / "runs"
 DEFAULT_DAG_ID = os.getenv("AIRFLOW_DAG_ID", "rwkv_train_lifecycle")
 GPU_POOL_NAME = os.getenv("AIRFLOW_GPU_POOL_NAME", "rwkv_gpu_pool")
@@ -65,6 +71,17 @@ def _dag_conf(context: dict[str, Any]) -> dict[str, Any]:
     data_prefix = _conf_or_env(conf, "data_prefix", f"{output_prefix}_text_document")
     eval_summary_path = _conf_or_env(conf, "eval_summary_path", str(RUNS_DIR / run_name / "eval_summary.json"))
     release_manifest_path = _conf_or_env(conf, "release_manifest_path", str(RUNS_DIR / run_name / "release_manifest.json"))
+    domain_categories_path = _conf_or_env(
+        conf,
+        "domain_categories_path",
+        str(RUNS_DIR / run_name / "domain_eval.categories.json"),
+    )
+    retention_categories_path = _conf_or_env(
+        conf,
+        "retention_categories_path",
+        str(RUNS_DIR / run_name / "retention_eval.categories.json"),
+    )
+    hard_cases_path = _conf_or_env(conf, "hard_cases_path", str(RUNS_DIR / run_name / "hard_cases.json"))
     train_wrapper = _conf_or_env(conf, "train_wrapper", DEFAULT_TRAIN_WRAPPER)
     return {
         "run_name": run_name,
@@ -79,6 +96,9 @@ def _dag_conf(context: dict[str, Any]) -> dict[str, Any]:
         "dataset_quality_status": _conf_or_env(conf, "dataset_quality_status", "PASS").upper(),
         "domain_eval_verdict": _conf_or_env(conf, "domain_eval_verdict", "PASS").upper(),
         "retention_eval_verdict": _conf_or_env(conf, "retention_eval_verdict", "PASS").upper(),
+        "domain_categories_path": domain_categories_path,
+        "retention_categories_path": retention_categories_path,
+        "hard_cases_path": hard_cases_path,
         "eval_summary_path": eval_summary_path,
         "release_manifest_path": release_manifest_path,
     }
@@ -287,7 +307,17 @@ def train_adapter(**context: Any) -> None:
 
 def evaluate_adapter(**context: Any) -> None:
     conf = _dag_conf(context)
-    _require_fields(conf, ["run_name", "eval_summary_path"], "evaluate_adapter")
+    _require_fields(
+        conf,
+        [
+            "run_name",
+            "domain_categories_path",
+            "retention_categories_path",
+            "hard_cases_path",
+            "eval_summary_path",
+        ],
+        "evaluate_adapter",
+    )
     command = [
         str(SCRIPTS_DIR / "evaluate_adapter.sh"),
         "--run-name",
@@ -296,6 +326,12 @@ def evaluate_adapter(**context: Any) -> None:
         conf["domain_eval_verdict"],
         "--retention-verdict",
         conf["retention_eval_verdict"],
+        "--domain-categories",
+        conf["domain_categories_path"],
+        "--retention-categories",
+        conf["retention_categories_path"],
+        "--hard-cases",
+        conf["hard_cases_path"],
         "--output",
         conf["eval_summary_path"],
     ]
@@ -319,7 +355,13 @@ def check_eval_gates(**context: Any) -> None:
         _write_audit(context, "check_eval_gates", "failed", {"reason": reason})
         raise AirflowFailException(reason)
 
-    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    try:
+        summary = validate_eval_summary(json.loads(summary_path.read_text(encoding="utf-8")))
+    except ValueError as exc:
+        reason = f"Eval summary contract invalid: {exc}"
+        _write_gate_result(conf["run_name"], "eval_gate", "FAIL", reason)
+        _write_audit(context, "check_eval_gates", "failed", {"reason": reason})
+        raise AirflowFailException(reason) from exc
     domain_verdict = str(summary.get("domain_eval", {}).get("verdict", "FAIL")).upper()
     retention_verdict = str(summary.get("retention_eval", {}).get("verdict", "FAIL")).upper()
 

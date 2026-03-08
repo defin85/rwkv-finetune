@@ -78,6 +78,9 @@ DATASET_MANIFEST="$SMOKE_ROOT/input.manifest.json"
 MODEL_PLACEHOLDER="$SMOKE_ROOT/models/smoke-model.pth"
 EVAL_SUMMARY="$ROOT_DIR/runs/$RUN_NAME/eval_summary.json"
 RELEASE_MANIFEST="$ROOT_DIR/runs/$RUN_NAME/release_manifest.json"
+DOMAIN_CATEGORIES="$ROOT_DIR/runs/$RUN_NAME/domain_eval.categories.json"
+RETENTION_CATEGORIES="$ROOT_DIR/runs/$RUN_NAME/retention_eval.categories.json"
+HARD_CASES="$ROOT_DIR/runs/$RUN_NAME/hard_cases.json"
 LOGICAL_DATE="$(date -u +%Y-%m-%dT%H:%M:%S)"
 SMOKE_REPORT="$SMOKE_ROOT/smoke_report.json"
 
@@ -95,6 +98,36 @@ EOF
 
 printf "smoke model placeholder\n" >"$MODEL_PLACEHOLDER"
 
+python - "$DOMAIN_CATEGORIES" "$RETENTION_CATEGORIES" "$HARD_CASES" <<'PY'
+import json
+import sys
+
+domain_categories, retention_categories, hard_cases = sys.argv[1:4]
+payloads = {
+    domain_categories: {
+        "code_generation": {
+            "verdict": "PASS",
+            "score": 0.81,
+            "samples_total": 4,
+            "failures_total": 0,
+        }
+    },
+    retention_categories: {
+        "ru_general": {
+            "verdict": "PASS",
+            "score": 0.79,
+            "samples_total": 3,
+            "failures_total": 0,
+        }
+    },
+    hard_cases: [],
+}
+for path, payload in payloads.items():
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, ensure_ascii=True, indent=2)
+        fh.write("\n")
+PY
+
 python "$ROOT_DIR/scripts/check_dataset_quality.py" \
   --input "$INPUT_JSONL" \
   --output "$DATASET_MANIFEST" \
@@ -106,7 +139,7 @@ python "$ROOT_DIR/scripts/check_dataset_quality.py" \
   --max-qwen-negative-rows 1 \
   --strict
 
-python - "$CONF_JSON" "$INPUT_JSONL" "$DATASET_MANIFEST" "$OUTPUT_PREFIX" "$DATA_PREFIX" "$MODEL_PLACEHOLDER" "$RUN_NAME" "$EVAL_SUMMARY" "$RELEASE_MANIFEST" <<'PY'
+python - "$CONF_JSON" "$INPUT_JSONL" "$DATASET_MANIFEST" "$OUTPUT_PREFIX" "$DATA_PREFIX" "$MODEL_PLACEHOLDER" "$RUN_NAME" "$EVAL_SUMMARY" "$RELEASE_MANIFEST" "$DOMAIN_CATEGORIES" "$RETENTION_CATEGORIES" "$HARD_CASES" <<'PY'
 import json
 import sys
 
@@ -120,7 +153,10 @@ import sys
     run_name,
     eval_summary,
     release_manifest,
-) = sys.argv[1:10]
+    domain_categories,
+    retention_categories,
+    hard_cases,
+) = sys.argv[1:13]
 
 payload = {
     "input_jsonl": input_jsonl,
@@ -133,6 +169,9 @@ payload = {
     "dataset_quality_status": "PASS",
     "domain_eval_verdict": "PASS",
     "retention_eval_verdict": "PASS",
+    "domain_categories_path": domain_categories,
+    "retention_categories_path": retention_categories,
+    "hard_cases_path": hard_cases,
     "eval_summary_path": eval_summary,
     "release_manifest_path": release_manifest,
 }
@@ -179,7 +218,14 @@ else
   echo "Primary smoke path failed, running wrapper fallback smoke."
   ./scripts/prepare_binidx.sh "$INPUT_JSONL" "$OUTPUT_PREFIX"
   ./scripts/train_smoke_stub.sh --load-model "$MODEL_PLACEHOLDER" --data-prefix "$DATA_PREFIX" --run-name "$RUN_NAME"
-  ./scripts/evaluate_adapter.sh --run-name "$RUN_NAME" --domain-verdict PASS --retention-verdict PASS --output "$EVAL_SUMMARY"
+  ./scripts/evaluate_adapter.sh \
+    --run-name "$RUN_NAME" \
+    --domain-verdict PASS \
+    --retention-verdict PASS \
+    --domain-categories "$DOMAIN_CATEGORIES" \
+    --retention-categories "$RETENTION_CATEGORIES" \
+    --hard-cases "$HARD_CASES" \
+    --output "$EVAL_SUMMARY"
   ./scripts/release_adapter.sh --run-name "$RUN_NAME" --eval-summary "$EVAL_SUMMARY" --output "$RELEASE_MANIFEST"
 
   mkdir -p "$ROOT_DIR/runs/$RUN_NAME/gates"

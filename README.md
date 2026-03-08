@@ -233,6 +233,8 @@ python scripts/validate_dataset_release.py \
   --dataset-version v0
 ```
 
+`validate_dataset_release.py` использует deterministic `created_at` policy: по умолчанию timestamp берётся из максимального source timestamp в rows, а при его отсутствии фиксируется epoch fallback; при необходимости timestamp можно переопределить через `--created-at`.
+
 Repo/time split builder with dedicated eval buckets for generation and refactoring:
 
 ```bash
@@ -251,9 +253,9 @@ python scripts/split_dataset_release.py \
   --time-key created_at
 ```
 
-`split_dataset_release.py` fails closed when required repo/time metadata is missing and records dedicated eval split policy in the manifest.
+`split_dataset_release.py` fails closed when required repo/time metadata is missing, records dedicated eval split policy in the manifest and inherits the same deterministic `created_at` policy (`--created-at` available for explicit override).
 
-v0 report builder for composition, quality metrics, eval verdicts, and hard-case backlog:
+v0 report builder for composition, quality metrics, category-level eval results and hard-case backlog:
 
 ```bash
 python scripts/build_dataset_v0_report.py \
@@ -262,6 +264,13 @@ python scripts/build_dataset_v0_report.py \
   --output-md docs/reports/example-v0-report.md \
   --output-json docs/reports/example-v0-report.json
 ```
+
+`eval_summary.json` теперь должен содержать:
+- `domain_eval.categories`
+- `retention_eval.categories`
+- `hard_cases`
+
+Airflow/DAG smoke генерирует example artifacts в `runs/<run_name>/domain_eval.categories.json`, `runs/<run_name>/retention_eval.categories.json` и `runs/<run_name>/hard_cases.json`, а `evaluate_adapter.sh` собирает из них machine-readable summary.
 
 Reference smoke artifact:
 

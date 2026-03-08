@@ -6,12 +6,16 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUN_NAME=""
 DOMAIN_VERDICT="PASS"
 RETENTION_VERDICT="PASS"
+DOMAIN_CATEGORIES=""
+RETENTION_CATEGORIES=""
+HARD_CASES=""
 OUTPUT=""
 
 usage() {
   cat <<'EOF'
 Usage:
-  evaluate_adapter.sh --run-name <name> [--domain-verdict PASS|FAIL] [--retention-verdict PASS|FAIL] --output <path>
+  evaluate_adapter.sh --run-name <name> [--domain-verdict PASS|FAIL] [--retention-verdict PASS|FAIL] \
+    --domain-categories <path> --retention-categories <path> --hard-cases <path> --output <path>
 EOF
 }
 
@@ -27,6 +31,18 @@ while [ "$#" -gt 0 ]; do
       ;;
     --retention-verdict)
       RETENTION_VERDICT="${2^^}"
+      shift 2
+      ;;
+    --domain-categories)
+      DOMAIN_CATEGORIES="$2"
+      shift 2
+      ;;
+    --retention-categories)
+      RETENTION_CATEGORIES="$2"
+      shift 2
+      ;;
+    --hard-cases)
+      HARD_CASES="$2"
       shift 2
       ;;
     --output)
@@ -45,7 +61,7 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-if [ -z "$RUN_NAME" ] || [ -z "$OUTPUT" ]; then
+if [ -z "$RUN_NAME" ] || [ -z "$DOMAIN_CATEGORIES" ] || [ -z "$RETENTION_CATEGORIES" ] || [ -z "$HARD_CASES" ] || [ -z "$OUTPUT" ]; then
   usage
   exit 1
 fi
@@ -72,26 +88,35 @@ if [ ! -d "$RUN_DIR" ]; then
   exit 1
 fi
 
-OVERALL_VERDICT="PASS"
-if [ "$DOMAIN_VERDICT" != "PASS" ] || [ "$RETENTION_VERDICT" != "PASS" ]; then
-  OVERALL_VERDICT="FAIL"
-fi
+for artifact in "$DOMAIN_CATEGORIES" "$RETENTION_CATEGORIES" "$HARD_CASES"; do
+  if [ ! -f "$artifact" ]; then
+    echo "Evaluation artifact not found: $artifact" >&2
+    exit 1
+  fi
+done
 
 mkdir -p "$(dirname "$OUTPUT")"
 
-python - "$RUN_NAME" "$DOMAIN_VERDICT" "$RETENTION_VERDICT" "$OVERALL_VERDICT" "$OUTPUT" <<'PY'
+python - "$ROOT_DIR" "$RUN_NAME" "$DOMAIN_VERDICT" "$RETENTION_VERDICT" "$DOMAIN_CATEGORIES" "$RETENTION_CATEGORIES" "$HARD_CASES" "$OUTPUT" <<'PY'
 import json
 import sys
-from datetime import datetime, timezone
+from pathlib import Path
 
-run_name, domain_verdict, retention_verdict, overall_verdict, output = sys.argv[1:6]
-payload = {
-    "run_name": run_name,
-    "created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-    "domain_eval": {"verdict": domain_verdict},
-    "retention_eval": {"verdict": retention_verdict},
-    "overall_verdict": overall_verdict,
-}
+root_dir, run_name, domain_verdict, retention_verdict, domain_categories_path, retention_categories_path, hard_cases_path, output = sys.argv[1:9]
+scripts_dir = Path(root_dir) / "scripts"
+if str(scripts_dir) not in sys.path:
+    sys.path.insert(0, str(scripts_dir))
+
+from eval_summary_contract import build_eval_summary, read_json_file
+
+payload = build_eval_summary(
+    run_name=run_name,
+    domain_verdict=domain_verdict,
+    retention_verdict=retention_verdict,
+    domain_categories=read_json_file(domain_categories_path),
+    retention_categories=read_json_file(retention_categories_path),
+    hard_cases=read_json_file(hard_cases_path),
+)
 with open(output, "w", encoding="utf-8") as fh:
     json.dump(payload, fh, ensure_ascii=True, indent=2)
     fh.write("\n")
