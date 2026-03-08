@@ -18,6 +18,8 @@ TASK_CATEGORIES = (
     "onec_query",
     "explanation_review",
 )
+ALLOWED_CONTOURS = ("core", "extended")
+INVALID_PROVENANCE_VALUES = {"unknown"}
 DEFAULT_REPO_METADATA_KEYS = (
     "source_family_id",
     "repo_id",
@@ -175,6 +177,12 @@ def validate_canonical_row(row: dict[str, Any]) -> list[str]:
         value = metadata.get(field)
         if not isinstance(value, str) or not value.strip():
             reasons.append(f"missing_metadata.{field}")
+            continue
+        normalized_value = value.strip()
+        if field in ("source", "license", "origin_ref") and normalized_value.lower() in INVALID_PROVENANCE_VALUES:
+            reasons.append(f"invalid_metadata.{field}")
+        if field == "contour" and normalized_value not in ALLOWED_CONTOURS:
+            reasons.append(f"invalid_metadata.{field}")
     if not is_russian_text(str(row.get("user_prompt", ""))):
         reasons.append("user_prompt_not_russian")
     return reasons

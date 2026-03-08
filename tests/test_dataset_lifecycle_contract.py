@@ -56,6 +56,25 @@ class DatasetLifecycleContractTests(unittest.TestCase):
         reasons = self.module.validate_canonical_row(row)
         self.assertTrue(any("user_prompt_not_russian" in reason for reason in reasons))
 
+    def test_validate_canonical_row_rejects_invalid_contour_and_unknown_provenance(self):
+        row = self.module.build_canonical_row(
+            user_prompt="Напиши функцию на Python.",
+            assistant_response="def f():\n    return 1",
+            metadata={
+                "source": "unknown",
+                "license": "unknown",
+                "origin_ref": "unknown",
+                "contour": "mixed",
+                "segment": "coding_general",
+                "split": "train",
+            },
+        )
+        reasons = self.module.validate_canonical_row(row)
+        self.assertTrue(any("invalid_metadata.contour" in reason for reason in reasons))
+        self.assertTrue(any("invalid_metadata.source" in reason for reason in reasons))
+        self.assertTrue(any("invalid_metadata.license" in reason for reason in reasons))
+        self.assertTrue(any("invalid_metadata.origin_ref" in reason for reason in reasons))
+
     def test_validate_category_balance_flags_out_of_range_release(self):
         rows = [
             self.module.build_canonical_row(

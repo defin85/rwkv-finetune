@@ -40,40 +40,23 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-    def write_jsonl_inputs(self, root: Path) -> tuple[Path, Path]:
+    def write_canonical_jsonl_inputs(
+        self,
+        root: Path,
+        *,
+        coding_prompts: tuple[str, str] = ("Напиши функцию C1", "Напиши функцию C2"),
+        ru_prompts: tuple[str, str] = ("Объясни RUS1", "Объясни RUS2"),
+        coding_metadata_overrides: tuple[dict | None, dict | None] = (None, None),
+        ru_metadata_overrides: tuple[dict | None, dict | None] = (None, None),
+    ) -> tuple[Path, Path]:
         coding = root / "coding.jsonl"
         ru = root / "ru.jsonl"
         coding.write_text(
             "\n".join(
                 [
-                    json.dumps({"instruction": "C1", "output": "R1"}, ensure_ascii=False),
-                    json.dumps({"instruction": "C2", "output": "R2"}, ensure_ascii=False),
-                ]
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-        ru.write_text(
-            "\n".join(
-                [
-                    json.dumps({"instruction": "RUS1", "output": "ANS1"}, ensure_ascii=False),
-                    json.dumps({"instruction": "RUS2", "output": "ANS2"}, ensure_ascii=False),
-                ]
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-        return coding, ru
-
-    def write_canonical_jsonl_inputs(self, root: Path) -> tuple[Path, Path]:
-        coding = root / "coding.canonical.jsonl"
-        ru = root / "ru.canonical.jsonl"
-        coding.write_text(
-            "\n".join(
-                [
                     json.dumps(
                         {
-                            "user_prompt": "Напиши функцию C1",
+                            "user_prompt": coding_prompts[0],
                             "assistant_response": "def c1():\n    return 'c1'",
                             "metadata": {
                                 "source": "unit-test",
@@ -82,13 +65,14 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
                                 "contour": "extended",
                                 "segment": "coding_general",
                                 "split": "train",
+                                **(coding_metadata_overrides[0] or {}),
                             },
                         },
                         ensure_ascii=False,
                     ),
                     json.dumps(
                         {
-                            "user_prompt": "Напиши функцию C2",
+                            "user_prompt": coding_prompts[1],
                             "assistant_response": "def c2():\n    return 'c2'",
                             "metadata": {
                                 "source": "unit-test",
@@ -97,6 +81,7 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
                                 "contour": "extended",
                                 "segment": "coding_general",
                                 "split": "train",
+                                **(coding_metadata_overrides[1] or {}),
                             },
                         },
                         ensure_ascii=False,
@@ -111,7 +96,7 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
                 [
                     json.dumps(
                         {
-                            "user_prompt": "Объясни RUS1",
+                            "user_prompt": ru_prompts[0],
                             "assistant_response": "Это ответ ANS1",
                             "metadata": {
                                 "source": "unit-test",
@@ -120,13 +105,14 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
                                 "contour": "extended",
                                 "segment": "ru_identity",
                                 "split": "train",
+                                **(ru_metadata_overrides[0] or {}),
                             },
                         },
                         ensure_ascii=False,
                     ),
                     json.dumps(
                         {
-                            "user_prompt": "Объясни RUS2",
+                            "user_prompt": ru_prompts[1],
                             "assistant_response": "Это ответ ANS2",
                             "metadata": {
                                 "source": "unit-test",
@@ -135,6 +121,7 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
                                 "contour": "extended",
                                 "segment": "ru_identity",
                                 "split": "train",
+                                **(ru_metadata_overrides[1] or {}),
                             },
                         },
                         ensure_ascii=False,
@@ -179,7 +166,7 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
             bsl_root = root / "onec"
             bsl_root.mkdir(parents=True, exist_ok=True)
             self.write_bsl_modules(bsl_root, include_manager=True)
-            coding, ru = self.write_jsonl_inputs(root)
+            coding, ru = self.write_canonical_jsonl_inputs(root)
             result = self.run_builder(root, bsl_root, coding, ru, hard_min_mb=0)
             self.assertEqual(result.returncode, 0, msg=result.stderr + "\n" + result.stdout)
 
@@ -189,8 +176,8 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
             self.assertIn("Instruction:", text)
             self.assertIn("Response:", text)
             self.assertIn("<|endoftext|>", text)
-            self.assertNotEqual(text.find("Instruction: C"), -1)
-            self.assertNotEqual(text.find("Instruction: RUS"), -1)
+            self.assertNotEqual(text.find("Instruction: Напиши функцию C"), -1)
+            self.assertNotEqual(text.find("Instruction: Объясни RUS"), -1)
             self.assertNotEqual(text.find("Instruction: Напиши"), -1)
 
     def test_pipeline_fails_when_module_coverage_missing(self):
@@ -199,7 +186,7 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
             bsl_root = root / "onec"
             bsl_root.mkdir(parents=True, exist_ok=True)
             self.write_bsl_modules(bsl_root, include_manager=False)
-            coding, ru = self.write_jsonl_inputs(root)
+            coding, ru = self.write_canonical_jsonl_inputs(root)
             result = self.run_builder(root, bsl_root, coding, ru, hard_min_mb=0)
             self.assertNotEqual(result.returncode, 0)
             report = json.loads((root / "release.report.json").read_text(encoding="utf-8"))
@@ -212,7 +199,7 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
             bsl_root = root / "onec"
             bsl_root.mkdir(parents=True, exist_ok=True)
             self.write_bsl_modules(bsl_root, include_manager=True)
-            coding, ru = self.write_jsonl_inputs(root)
+            coding, ru = self.write_canonical_jsonl_inputs(root)
             result = self.run_builder(root, bsl_root, coding, ru, hard_min_mb=1)
             self.assertNotEqual(result.returncode, 0)
             report = json.loads((root / "release.report.json").read_text(encoding="utf-8"))
@@ -233,6 +220,34 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
             text = (root / "release.txt").read_text(encoding="utf-8")
             self.assertIn("Instruction: Напиши функцию C1", text)
             self.assertIn("Instruction: Объясни RUS1", text)
+
+    def test_pipeline_fails_closed_on_non_russian_prompt(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            bsl_root = root / "onec"
+            bsl_root.mkdir(parents=True, exist_ok=True)
+            self.write_bsl_modules(bsl_root, include_manager=True)
+            coding, ru = self.write_canonical_jsonl_inputs(
+                root,
+                coding_prompts=("Write function C1", "Напиши функцию C2"),
+            )
+            result = self.run_builder(root, bsl_root, coding, ru, hard_min_mb=0)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("user_prompt_not_russian", result.stderr + result.stdout)
+
+    def test_pipeline_fails_closed_on_missing_provenance_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            bsl_root = root / "onec"
+            bsl_root.mkdir(parents=True, exist_ok=True)
+            self.write_bsl_modules(bsl_root, include_manager=True)
+            coding, ru = self.write_canonical_jsonl_inputs(
+                root,
+                coding_metadata_overrides=({"license": "unknown"}, None),
+            )
+            result = self.run_builder(root, bsl_root, coding, ru, hard_min_mb=0)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("invalid_metadata.license", result.stderr + result.stdout)
 
 
 if __name__ == "__main__":

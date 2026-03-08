@@ -284,6 +284,8 @@ python scripts/build_1c_expert_v4_dataset.py \
   --report-output data/raw/1c_expert_v4.release.report.json
 ```
 
+`coding-jsonl` и `ru-jsonl` должны резолвиться в canonical rows с валидными `source`, `license`, `origin_ref`, `contour` (`core|extended`) и русским `user_prompt`; profile builder теперь fail-closed на нарушении этого contract.
+
 Output report includes:
 
 - module coverage (`common/manager/object`)

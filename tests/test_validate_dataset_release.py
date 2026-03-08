@@ -145,3 +145,33 @@ class ValidateDatasetReleaseTests(unittest.TestCase):
             manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
             self.assertTrue(any("secret_or_pii_rows" in reason for reason in manifest["quality_reasons"]))
 
+    def test_validator_fails_on_invalid_contour_and_unknown_provenance(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            bad_row = self.canonical_row(
+                user_prompt="Напиши обработчик заказа.",
+                assistant_response="def handle(order):\n    return bool(order)",
+                split="train",
+                category="code_generation",
+            )
+            bad_row["metadata"]["contour"] = "mixed"
+            bad_row["metadata"]["license"] = "unknown"
+            bad_row["metadata"]["origin_ref"] = "unknown"
+
+            result = self.run_validator(
+                root,
+                train_rows=[bad_row],
+                eval_rows=[
+                    self.canonical_row(
+                        user_prompt="Рефакторни обработчик заказа.",
+                        assistant_response="def handle(order):\n    return order is not None",
+                        split="eval",
+                        category="refactoring",
+                    )
+                ],
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["quality_status"], "FAIL")
+            self.assertTrue(any("invalid_schema_rows" in reason for reason in manifest["quality_reasons"]))

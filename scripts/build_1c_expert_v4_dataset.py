@@ -17,7 +17,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from dataset_lifecycle import load_canonical_rows
+from dataset_lifecycle import load_canonical_rows, validate_canonical_row
 
 
 METHOD_PATTERN = re.compile(
@@ -57,12 +57,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--coding-jsonl",
         required=True,
-        help="JSONL with coding samples (instruction/output or text).",
+        help="JSONL with coding samples resolvable to canonical rows with valid RU prompt and provenance metadata.",
     )
     parser.add_argument(
         "--ru-jsonl",
         required=True,
-        help="JSONL with RU identity/chat samples (instruction/output or text).",
+        help="JSONL with RU identity/chat samples resolvable to canonical rows with valid provenance metadata.",
     )
     parser.add_argument("--output-text", required=True, help="Output train text path.")
     parser.add_argument("--report-output", required=True, help="Output release report JSON path.")
@@ -164,10 +164,18 @@ def parse_instruction_output(payload: dict[str, Any]) -> tuple[str, str]:
 
 
 def load_segment_samples(path: Path) -> list[str]:
-    return [
-        format_sample(row["user_prompt"], row["assistant_response"])
-        for row in load_canonical_rows(path)
-    ]
+    rows = load_canonical_rows(path)
+    failures: list[str] = []
+    samples: list[str] = []
+    for index, row in enumerate(rows, start=1):
+        reasons = validate_canonical_row(row)
+        if reasons:
+            failures.append(f"{path}:{index}: {','.join(reasons)}")
+            continue
+        samples.append(format_sample(row["user_prompt"], row["assistant_response"]))
+    if failures:
+        raise ValueError("\n".join(failures))
+    return samples
 
 
 def validate_profile(profile: dict[str, Any]) -> None:

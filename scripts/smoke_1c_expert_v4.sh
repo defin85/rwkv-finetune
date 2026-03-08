@@ -37,13 +37,13 @@ printf '%s\n' \
   > "$BSL_ROOT/Documents/Order/ObjectModule.bsl"
 
 printf '%s\n' \
-  '{"instruction":"C1","output":"R1"}' \
-  '{"instruction":"C2","output":"R2"}' \
+  '{"user_prompt":"Напиши функцию C1","assistant_response":"def c1():\n    return '\''c1'\''","metadata":{"source":"smoke-test","license":"internal","origin_ref":"local://smoke/c1","contour":"extended","segment":"coding_general","split":"train"}}' \
+  '{"user_prompt":"Напиши функцию C2","assistant_response":"def c2():\n    return '\''c2'\''","metadata":{"source":"smoke-test","license":"internal","origin_ref":"local://smoke/c2","contour":"extended","segment":"coding_general","split":"train"}}' \
   > "$CODING_JSONL"
 
 printf '%s\n' \
-  '{"instruction":"RUS1","output":"ANS1"}' \
-  '{"instruction":"RUS2","output":"ANS2"}' \
+  '{"user_prompt":"Объясни RUS1","assistant_response":"Это ответ ANS1","metadata":{"source":"smoke-test","license":"internal","origin_ref":"local://smoke/rus1","contour":"extended","segment":"ru_identity","split":"train"}}' \
+  '{"user_prompt":"Объясни RUS2","assistant_response":"Это ответ ANS2","metadata":{"source":"smoke-test","license":"internal","origin_ref":"local://smoke/rus2","contour":"extended","segment":"ru_identity","split":"train"}}' \
   > "$RU_JSONL"
 
 python "$ROOT_DIR/scripts/build_1c_expert_v4_dataset.py" \
