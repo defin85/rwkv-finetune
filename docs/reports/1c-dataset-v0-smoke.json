@@ -1,0 +1,82 @@
+{
+  "dataset": {
+    "name": "1c-dataset-v0-smoke",
+    "version": "v0",
+    "quality_status": "PASS",
+    "rows_total": 10,
+    "splits": {
+      "eval_generation": 2,
+      "eval_refactoring": 2,
+      "train": 6
+    },
+    "contours": {
+      "core": 6,
+      "extended": 4
+    },
+    "segments": {
+      "coding_general": 4,
+      "onec_bsl": 4,
+      "ru_identity": 2
+    },
+    "categories": {
+      "code_generation": 4,
+      "refactoring": 4,
+      "onec_query": 1,
+      "explanation_review": 1
+    }
+  },
+  "quality": {
+    "quality_reasons": [
+      "quality gates passed"
+    ],
+    "gates": {
+      "invalid_schema_rows": 0,
+      "invalid_ru_prompt_rows": 0,
+      "secret_or_pii_rows": 0,
+      "invalid_bsl_rows": 0,
+      "split_leakage_exact": 0,
+      "split_leakage_near": 0,
+      "invalid_eval_split_rows": 0,
+      "train_category_distribution": {
+        "code_generation": 2,
+        "refactoring": 2,
+        "onec_query": 1,
+        "explanation_review": 1
+      }
+    }
+  },
+  "evaluation": {
+    "overall_verdict": "PASS",
+    "domain_eval": {
+      "verdict": "PASS",
+      "score": 0.82,
+      "notes": "Smoke holdout passed on dedicated generation/refactoring buckets."
+    },
+    "retention_eval": {
+      "verdict": "PASS",
+      "score": 0.8,
+      "notes": "No retention regression beyond guardrail on smoke baseline."
+    }
+  },
+  "backlog": {
+    "hard_cases_total": 2,
+    "hard_cases_by_category": {
+      "code_generation": 1,
+      "refactoring": 1
+    },
+    "hard_cases": [
+      {
+        "category": "refactoring",
+        "prompt": "Рефакторни длинную процедуру проведения документа.",
+        "failure_mode": "missed side effects",
+        "action": "add more history-based 1C refactoring samples"
+      },
+      {
+        "category": "code_generation",
+        "prompt": "Напиши менеджерский модуль для пакетного проведения документов.",
+        "failure_mode": "weak transaction boundary handling",
+        "action": "add more manager-module generation samples with transactional context"
+      }
+    ]
+  }
+}

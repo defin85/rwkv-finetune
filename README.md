@@ -233,6 +233,41 @@ python scripts/validate_dataset_release.py \
   --dataset-version v0
 ```
 
+Repo/time split builder with dedicated eval buckets for generation and refactoring:
+
+```bash
+python scripts/split_dataset_release.py \
+  --input /path/to/canonical.jsonl \
+  --train-output data/interim/example_train.jsonl \
+  --eval-output data/interim/example_eval.jsonl \
+  --eval-generation-output data/interim/example_eval_generation.jsonl \
+  --eval-refactoring-output data/interim/example_eval_refactoring.jsonl \
+  --manifest-output data/curated/example.manifest.json \
+  --dataset-name example \
+  --dataset-version v0 \
+  --repo-key source_family_id \
+  --repo-key origin_ref \
+  --time-key commit_timestamp \
+  --time-key created_at
+```
+
+`split_dataset_release.py` fails closed when required repo/time metadata is missing and records dedicated eval split policy in the manifest.
+
+v0 report builder for composition, quality metrics, eval verdicts, and hard-case backlog:
+
+```bash
+python scripts/build_dataset_v0_report.py \
+  --manifest data/curated/example.manifest.json \
+  --eval-summary runs/example/eval_summary.json \
+  --output-md docs/reports/example-v0-report.md \
+  --output-json docs/reports/example-v0-report.json
+```
+
+Reference smoke artifact:
+
+- `docs/reports/1c-dataset-v0-smoke.md`
+- `docs/reports/1c-dataset-v0-smoke.json`
+
 Machine-readable profile:
 
 - `configs/dataset/1c-expert-v4.profile.json`

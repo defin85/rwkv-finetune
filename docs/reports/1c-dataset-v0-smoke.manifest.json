@@ -1,0 +1,67 @@
+{
+  "dataset_name": "1c-dataset-v0-smoke",
+  "dataset_version": "v0",
+  "quality_status": "PASS",
+  "quality_reasons": [
+    "quality gates passed"
+  ],
+  "source_summary": {
+    "rows_total": 10,
+    "contours": {
+      "core": 6,
+      "extended": 4
+    },
+    "segments": {
+      "coding_general": 4,
+      "onec_bsl": 4,
+      "ru_identity": 2
+    },
+    "categories": {
+      "code_generation": 4,
+      "refactoring": 4,
+      "onec_query": 1,
+      "explanation_review": 1
+    }
+  },
+  "quality_gates": {
+    "invalid_schema_rows": 0,
+    "invalid_ru_prompt_rows": 0,
+    "secret_or_pii_rows": 0,
+    "invalid_bsl_rows": 0,
+    "split_leakage_exact": 0,
+    "split_leakage_near": 0,
+    "invalid_eval_split_rows": 0,
+    "train_category_distribution": {
+      "code_generation": 2,
+      "refactoring": 2,
+      "onec_query": 1,
+      "explanation_review": 1
+    }
+  },
+  "split_policy": {
+    "strategy": "repo_temporal_boundary",
+    "repo_keys": [
+      "source_family_id",
+      "origin_ref"
+    ],
+    "time_keys": [
+      "commit_timestamp",
+      "created_at"
+    ],
+    "eval_split_categories": {
+      "eval_generation": "code_generation",
+      "eval_refactoring": "refactoring"
+    }
+  },
+  "splits": {
+    "train": {
+      "rows_total": 6
+    },
+    "eval_generation": {
+      "rows_total": 2
+    },
+    "eval_refactoring": {
+      "rows_total": 2
+    }
+  }
+}

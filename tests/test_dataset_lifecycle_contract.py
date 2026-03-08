@@ -146,6 +146,156 @@ class DatasetLifecycleContractTests(unittest.TestCase):
         self.assertEqual(manifest["splits"]["train"]["rows_total"], 1)
         self.assertEqual(manifest["splits"]["eval"]["rows_total"], 1)
 
+    def test_split_rows_by_repo_time_creates_dedicated_eval_buckets(self):
+        rows = [
+            self.module.build_canonical_row(
+                user_prompt="Напиши функцию расчета скидки v1.",
+                assistant_response="def discount_v1(order):\n    return 0",
+                metadata={
+                    "source": "unit-test",
+                    "license": "internal",
+                    "origin_ref": "local://repo-a",
+                    "contour": "core",
+                    "segment": "coding_general",
+                    "split": "train",
+                    "category": "code_generation",
+                    "repo_id": "repo-a",
+                    "commit_timestamp": 100,
+                },
+            ),
+            self.module.build_canonical_row(
+                user_prompt="Рефакторни расчет скидки v1.",
+                assistant_response="def discount_refactor_v1(order):\n    return bool(order)",
+                metadata={
+                    "source": "unit-test",
+                    "license": "internal",
+                    "origin_ref": "local://repo-a",
+                    "contour": "core",
+                    "segment": "coding_general",
+                    "split": "train",
+                    "category": "refactoring",
+                    "repo_id": "repo-a",
+                    "commit_timestamp": 200,
+                },
+            ),
+            self.module.build_canonical_row(
+                user_prompt="Напиши функцию расчета скидки v2.",
+                assistant_response="def discount_v2(order):\n    return 1",
+                metadata={
+                    "source": "unit-test",
+                    "license": "internal",
+                    "origin_ref": "local://repo-a",
+                    "contour": "core",
+                    "segment": "coding_general",
+                    "split": "train",
+                    "category": "code_generation",
+                    "repo_id": "repo-a",
+                    "commit_timestamp": 300,
+                },
+            ),
+            self.module.build_canonical_row(
+                user_prompt="Рефакторни расчет скидки v2.",
+                assistant_response="def discount_refactor_v2(order):\n    return order is not None",
+                metadata={
+                    "source": "unit-test",
+                    "license": "internal",
+                    "origin_ref": "local://repo-b",
+                    "contour": "core",
+                    "segment": "coding_general",
+                    "split": "train",
+                    "category": "refactoring",
+                    "repo_id": "repo-b",
+                    "commit_timestamp": 400,
+                },
+            ),
+            self.module.build_canonical_row(
+                user_prompt="Напиши функцию расчета цены v3.",
+                assistant_response="def price_v3(order):\n    return 3",
+                metadata={
+                    "source": "unit-test",
+                    "license": "internal",
+                    "origin_ref": "local://repo-b",
+                    "contour": "core",
+                    "segment": "coding_general",
+                    "split": "train",
+                    "category": "code_generation",
+                    "repo_id": "repo-b",
+                    "commit_timestamp": 500,
+                },
+            ),
+        ]
+        rows_by_split, report = self.module.split_rows_by_repo_time(
+            rows,
+            repo_keys=("repo_id",),
+            time_keys=("commit_timestamp",),
+            eval_split_categories={
+                "eval_generation": "code_generation",
+                "eval_refactoring": "refactoring",
+            },
+        )
+        self.assertEqual(len(rows_by_split["eval_generation"]), 2)
+        self.assertEqual(len(rows_by_split["eval_refactoring"]), 2)
+        self.assertEqual(len(rows_by_split["eval"]), 4)
+        self.assertEqual(len(rows_by_split["train"]), 1)
+        self.assertEqual(
+            {row["metadata"]["category"] for row in rows_by_split["eval_generation"]},
+            {"code_generation"},
+        )
+        self.assertEqual(
+            {row["metadata"]["category"] for row in rows_by_split["eval_refactoring"]},
+            {"refactoring"},
+        )
+        self.assertEqual(report["resolved_repo_keys"], {"repo_id": 5})
+        self.assertEqual(report["resolved_time_keys"], {"commit_timestamp": 5})
+
+    def test_build_release_manifest_flags_invalid_dedicated_eval_split(self):
+        train_rows = [
+            self.module.build_canonical_row(
+                user_prompt="Напиши функцию обработки заказа.",
+                assistant_response="def handle_order():\n    return True",
+                metadata={
+                    "source": "unit-test",
+                    "license": "internal",
+                    "origin_ref": "local://unit",
+                    "contour": "core",
+                    "segment": "coding_general",
+                    "split": "train",
+                    "category": "code_generation",
+                },
+            )
+        ]
+        eval_generation = [
+            self.module.build_canonical_row(
+                user_prompt="Рефакторни функцию обработки заказа.",
+                assistant_response="def handle_order(order):\n    return bool(order)",
+                metadata={
+                    "source": "unit-test",
+                    "license": "internal",
+                    "origin_ref": "local://unit",
+                    "contour": "core",
+                    "segment": "coding_general",
+                    "split": "eval_generation",
+                    "category": "refactoring",
+                },
+            )
+        ]
+        manifest = self.module.build_release_manifest(
+            dataset_name="unit-dataset",
+            dataset_version="v0",
+            created_by="tests/test_dataset_lifecycle_contract.py",
+            rows_by_split={"train": train_rows, "eval_generation": eval_generation},
+            split_artifacts={
+                "train": {"path": "/tmp/train.jsonl", "sha256": "abc", "rows_total": 1},
+                "eval_generation": {"path": "/tmp/eval_generation.jsonl", "sha256": "def", "rows_total": 1},
+            },
+            enforce_balance=False,
+            eval_split_categories={"eval_generation": "code_generation"},
+        )
+        self.assertEqual(manifest["quality_status"], "FAIL")
+        self.assertTrue(
+            any("invalid_eval_split_category[eval_generation]" in reason for reason in manifest["quality_reasons"])
+        )
+
     def test_policy_file_matches_expected_stage_layout(self):
         policy_path = (
             Path(__file__).resolve().parents[1]

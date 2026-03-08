@@ -18,6 +18,21 @@ TASK_CATEGORIES = (
     "onec_query",
     "explanation_review",
 )
+DEFAULT_REPO_METADATA_KEYS = (
+    "source_family_id",
+    "repo_id",
+    "canonical_repo_root",
+    "origin_ref",
+)
+DEFAULT_TIME_METADATA_KEYS = (
+    "commit_timestamp",
+    "source_timestamp",
+    "created_at",
+)
+DEFAULT_EVAL_SPLIT_CATEGORIES = {
+    "eval_generation": "code_generation",
+    "eval_refactoring": "refactoring",
+}
 STAGE_DIRS = {
     "raw": "data/raw",
     "interim": "data/interim",
@@ -283,6 +298,186 @@ def cross_split_leakage(train_rows: list[dict[str, Any]], holdout_rows: list[dic
     }
 
 
+def row_metadata_value(row: dict[str, Any], key: str) -> Any:
+    metadata = row.get("metadata", {})
+    if isinstance(metadata, dict) and key in metadata:
+        return metadata.get(key)
+    return row.get(key)
+
+
+def resolve_row_boundary_value(
+    row: dict[str, Any],
+    keys: tuple[str, ...],
+    boundary_name: str,
+) -> tuple[str, Any]:
+    for key in keys:
+        value = row_metadata_value(row, key)
+        if value is None:
+            continue
+        if isinstance(value, str) and not value.strip():
+            continue
+        return key, value
+    origin_ref = str(row.get("metadata", {}).get("origin_ref", "unknown"))
+    raise ValueError(f"missing_{boundary_name}_metadata[{','.join(keys)}] origin_ref={origin_ref}")
+
+
+def parse_temporal_value(value: Any) -> int:
+    if isinstance(value, bool):
+        raise ValueError("boolean value is not a valid timestamp")
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("empty timestamp")
+        if stripped.isdigit():
+            return int(stripped)
+        normalized = stripped.replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(normalized)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return int(parsed.timestamp())
+    raise ValueError(f"unsupported timestamp type: {type(value).__name__}")
+
+
+def clone_row_for_split(row: dict[str, Any], split_name: str) -> dict[str, Any]:
+    metadata = dict(row.get("metadata", {}))
+    metadata["split"] = split_name
+    return build_canonical_row(row["user_prompt"], row["assistant_response"], metadata)
+
+
+def split_rows_by_repo_time(
+    rows: list[dict[str, Any]],
+    repo_keys: tuple[str, ...] = DEFAULT_REPO_METADATA_KEYS,
+    time_keys: tuple[str, ...] = DEFAULT_TIME_METADATA_KEYS,
+    eval_split_categories: dict[str, str] | None = None,
+) -> tuple[dict[str, list[dict[str, Any]]], dict[str, Any]]:
+    eval_split_categories = eval_split_categories or dict(DEFAULT_EVAL_SPLIT_CATEGORIES)
+    if not eval_split_categories:
+        raise ValueError("eval_split_categories must not be empty")
+
+    resolved_repo_keys: Counter[str] = Counter()
+    resolved_time_keys: Counter[str] = Counter()
+    grouped: dict[str, list[dict[str, Any]]] = {}
+
+    for row in rows:
+        normalized = build_canonical_row(row["user_prompt"], row["assistant_response"], row["metadata"])
+        repo_key, repo_value = resolve_row_boundary_value(normalized, repo_keys, "repo")
+        time_key, time_value = resolve_row_boundary_value(normalized, time_keys, "time")
+        try:
+            timestamp = parse_temporal_value(time_value)
+        except ValueError as exc:
+            raise ValueError(f"invalid_time_metadata[{time_key}]={time_value!r}") from exc
+
+        resolved_repo_keys[repo_key] += 1
+        resolved_time_keys[time_key] += 1
+        grouped.setdefault(str(repo_value), []).append(
+            {
+                "row": normalized,
+                "repo_boundary": str(repo_value),
+                "timestamp": timestamp,
+                "category": infer_task_category(normalized),
+                "exact_hash": canonical_row_exact_hash(normalized),
+                "near_hash": canonical_row_near_hash(normalized),
+            }
+        )
+
+    buckets: dict[str, list[dict[str, Any]]] = {"train": []}
+    for split_name in eval_split_categories:
+        buckets[split_name] = []
+
+    for repo_boundary in sorted(grouped):
+        entries = sorted(
+            grouped[repo_boundary],
+            key=lambda item: (item["timestamp"], item["exact_hash"], item["row"]["user_prompt"]),
+        )
+        selected_exact_hashes: set[str] = set()
+        for split_name, expected_category in eval_split_categories.items():
+            candidate = next(
+                (
+                    item
+                    for item in reversed(entries)
+                    if item["category"] == expected_category and item["exact_hash"] not in selected_exact_hashes
+                ),
+                None,
+            )
+            if candidate is None:
+                continue
+            selected_exact_hashes.add(candidate["exact_hash"])
+            buckets[split_name].append(clone_row_for_split(candidate["row"], split_name))
+
+        for item in entries:
+            if item["exact_hash"] in selected_exact_hashes:
+                continue
+            buckets["train"].append(clone_row_for_split(item["row"], "train"))
+
+    missing_eval_splits = [split_name for split_name, split_rows in buckets.items() if split_name != "train" and not split_rows]
+    if missing_eval_splits:
+        raise ValueError(f"missing_eval_split_rows={','.join(sorted(missing_eval_splits))}")
+
+    holdout_rows = [row for split_name, split_rows in buckets.items() if split_name != "train" for row in split_rows]
+    holdout_exact = {canonical_row_exact_hash(row) for row in holdout_rows}
+    holdout_near = {canonical_row_near_hash(row) for row in holdout_rows}
+    removed_exact = 0
+    removed_near = 0
+    filtered_train: list[dict[str, Any]] = []
+    for row in buckets["train"]:
+        exact_hash = canonical_row_exact_hash(row)
+        near_hash = canonical_row_near_hash(row)
+        if exact_hash in holdout_exact:
+            removed_exact += 1
+            continue
+        if near_hash in holdout_near:
+            removed_near += 1
+            continue
+        filtered_train.append(row)
+    buckets["train"] = filtered_train
+
+    def sort_release_rows(split_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return sorted(
+            split_rows,
+            key=lambda row: (
+                parse_temporal_value(resolve_row_boundary_value(row, time_keys, "time")[1]),
+                canonical_row_exact_hash(row),
+            ),
+        )
+
+    buckets["train"] = sort_release_rows(buckets["train"])
+    for split_name in eval_split_categories:
+        buckets[split_name] = sort_release_rows(buckets[split_name])
+
+    combined_eval: list[dict[str, Any]] = []
+    for split_name in eval_split_categories:
+        combined_eval.extend(clone_row_for_split(row, "eval") for row in buckets[split_name])
+    buckets["eval"] = sort_release_rows(combined_eval)
+
+    split_time_ranges: dict[str, dict[str, int]] = {}
+    for split_name, split_rows in buckets.items():
+        if not split_rows:
+            continue
+        timestamps = [parse_temporal_value(resolve_row_boundary_value(row, time_keys, "time")[1]) for row in split_rows]
+        split_time_ranges[split_name] = {
+            "oldest_timestamp": min(timestamps),
+            "newest_timestamp": max(timestamps),
+        }
+
+    report = {
+        "strategy": "repo_temporal_boundary",
+        "repo_boundaries_total": len(grouped),
+        "repo_row_counts": {repo_boundary: len(grouped[repo_boundary]) for repo_boundary in sorted(grouped)},
+        "resolved_repo_keys": dict(sorted(resolved_repo_keys.items())),
+        "resolved_time_keys": dict(sorted(resolved_time_keys.items())),
+        "eval_split_categories": dict(eval_split_categories),
+        "removed_from_train": {
+            "exact_duplicates": removed_exact,
+            "near_duplicates": removed_near,
+        },
+        "split_rows": {split_name: len(split_rows) for split_name, split_rows in buckets.items()},
+        "split_time_ranges": split_time_ranges,
+    }
+    return buckets, report
+
+
 def build_source_summary(rows_by_split: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
     all_rows = [row for rows in rows_by_split.values() for row in rows]
     contours = Counter(str(row["metadata"].get("contour", "unknown")) for row in all_rows)
@@ -319,9 +514,11 @@ def build_release_manifest(
     dedup_policy: dict[str, Any] | None = None,
     enforce_balance: bool = False,
     required_eval_categories: tuple[str, ...] = (),
+    eval_split_categories: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     validate_dataset_version(dataset_version)
     split_artifacts = split_artifacts or {}
+    eval_split_categories = eval_split_categories or {}
     normalized: dict[str, list[dict[str, Any]]] = {}
     for split_name, rows in rows_by_split.items():
         normalized[split_name] = []
@@ -338,6 +535,7 @@ def build_release_manifest(
         "invalid_bsl_rows": 0,
         "split_leakage_exact": 0,
         "split_leakage_near": 0,
+        "invalid_eval_split_rows": 0,
     }
     duplicate_summary: dict[str, dict[str, int]] = {}
 
@@ -369,8 +567,21 @@ def build_release_manifest(
     if quality_counts["invalid_bsl_rows"] > 0:
         reasons.append(f"invalid_bsl_rows={quality_counts['invalid_bsl_rows']}")
 
+    for split_name, expected_category in eval_split_categories.items():
+        split_rows = normalized.get(split_name, [])
+        if not split_rows:
+            reasons.append(f"missing_eval_split[{split_name}]")
+            continue
+        actual_categories = {infer_task_category(row) for row in split_rows}
+        if actual_categories != {expected_category}:
+            quality_counts["invalid_eval_split_rows"] += len(split_rows)
+            categories_joined = ",".join(sorted(actual_categories)) if actual_categories else "none"
+            reasons.append(
+                f"invalid_eval_split_category[{split_name}]={categories_joined} expected={expected_category}"
+            )
+
     train_rows = normalized.get("train", [])
-    holdout_rows = normalized.get("eval", []) + normalized.get("dev", [])
+    holdout_rows = [row for split_name, rows in normalized.items() if split_name != "train" for row in rows]
     if train_rows and holdout_rows:
         leakage = cross_split_leakage(train_rows, holdout_rows)
         quality_counts["split_leakage_exact"] = leakage["exact_overlap"]
@@ -384,8 +595,11 @@ def build_release_manifest(
     if enforce_balance and train_rows:
         reasons.extend(validate_category_balance(train_categories))
 
-    if required_eval_categories and normalized.get("eval"):
-        eval_categories = category_distribution(normalized["eval"])
+    eval_category_rows = list(normalized.get("eval", []))
+    for split_name in eval_split_categories:
+        eval_category_rows.extend(normalized.get(split_name, []))
+    if required_eval_categories and eval_category_rows:
+        eval_categories = category_distribution(eval_category_rows)
         missing = [category for category in required_eval_categories if eval_categories.get(category, 0) == 0]
         if missing:
             reasons.append(f"missing_eval_categories={','.join(missing)}")
@@ -428,6 +642,7 @@ def build_release_manifest(
         or {
             "strategy": "explicit_splits",
             "required_eval_categories": list(required_eval_categories),
+            "eval_split_categories": dict(eval_split_categories),
         },
         "quality_gates": {
             **quality_counts,

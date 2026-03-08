@@ -1,0 +1,27 @@
+{
+  "overall_verdict": "PASS",
+  "domain_eval": {
+    "verdict": "PASS",
+    "score": 0.82,
+    "notes": "Smoke holdout passed on dedicated generation/refactoring buckets."
+  },
+  "retention_eval": {
+    "verdict": "PASS",
+    "score": 0.8,
+    "notes": "No retention regression beyond guardrail on smoke baseline."
+  },
+  "hard_cases": [
+    {
+      "category": "refactoring",
+      "prompt": "Рефакторни длинную процедуру проведения документа.",
+      "failure_mode": "missed side effects",
+      "action": "add more history-based 1C refactoring samples"
+    },
+    {
+      "category": "code_generation",
+      "prompt": "Напиши менеджерский модуль для пакетного проведения документов.",
+      "failure_mode": "weak transaction boundary handling",
+      "action": "add more manager-module generation samples with transactional context"
+    }
+  ]
+}

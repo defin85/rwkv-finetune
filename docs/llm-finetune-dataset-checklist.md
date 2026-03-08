@@ -114,6 +114,28 @@ python scripts/validate_dataset_release.py \
 - [ ] Train/Eval leakage = `0` по exact и near hash.
 - [ ] Для 1C sample нет BSL syntax/shape нарушений на release gate.
 
+Для repo/time split с отдельными eval bucket'ами:
+
+```bash
+python scripts/split_dataset_release.py \
+  --input /path/to/canonical.jsonl \
+  --train-output data/interim/example_train.jsonl \
+  --eval-output data/interim/example_eval.jsonl \
+  --eval-generation-output data/interim/example_eval_generation.jsonl \
+  --eval-refactoring-output data/interim/example_eval_refactoring.jsonl \
+  --manifest-output data/curated/example.manifest.json \
+  --dataset-name example \
+  --dataset-version v0 \
+  --repo-key source_family_id \
+  --repo-key origin_ref \
+  --time-key commit_timestamp \
+  --time-key created_at
+```
+
+- [ ] Для `eval_generation` есть только `code_generation`.
+- [ ] Для `eval_refactoring` есть только `refactoring`.
+- [ ] В `split_policy` зафиксированы repo/time keys и dedicated eval split contract.
+
 ## 7) Leakage и split-политика
 
 - [ ] Train/Eval разнесены по времени/источнику или по документам (а не случайно построчно из одного параграфа).
@@ -127,6 +149,17 @@ python scripts/validate_dataset_release.py \
 - [ ] Для каждого прогона уникальные `run_name`/`run_id`.
 - [ ] Версия датасета удовлетворяет шаблону `vN` или `vN.M`.
 - [ ] Используются stage directories `data/raw`, `data/interim`, `data/curated`.
+- [ ] Для релиза сохранён `v0 report` с составом датасета, quality gates, eval verdicts и hard-case backlog.
+
+Команда сборки `v0 report`:
+
+```bash
+python scripts/build_dataset_v0_report.py \
+  --manifest data/curated/example.manifest.json \
+  --eval-summary runs/example/eval_summary.json \
+  --output-md docs/reports/example-v0-report.md \
+  --output-json docs/reports/example-v0-report.json
+```
 
 Команда генерации identity-набора:
 
