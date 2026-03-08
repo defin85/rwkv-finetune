@@ -11,7 +11,8 @@
   - экспорт 1C-конфигурации (BSL-модули);
   - экспорт синтаксис-помощника;
   - экспорт/снимок контента `kb.1ci.com`.
-- Фиксируются правила нормализации в единый sample-формат (`Instruction/Response`) с provenance и license полями для каждого образца.
+- Фиксируются правила нормализации всех трёх потоков в канонический sample-контракт `user_prompt` / `assistant_response` + metadata с provenance и license полями для каждого образца.
+- Фиксируется граница ответственности: profile-specific сериализация `Instruction/Response + <|endoftext|>` остаётся на уровне `add-1c-expert-v4-dataset-profile`, а не внутри ingest-слоя.
 - Фиксируется отдельный объёмный gate для 1C core корпуса: целевой диапазон `300 MB .. 1 GB` перед смешиванием с non-1C сегментами.
 - Фиксируются fail-closed правила: блокировка релиза при отсутствии обязательного источника, доменном нарушении для документации или неполном provenance.
 
@@ -22,6 +23,6 @@
   - `add-1c-dataset-strategy` (базовая стратегия lifecycle и quality gates);
   - `add-1c-expert-v4-dataset-profile` (операционный профиль и mix).
 - Affected code:
-  - `scripts/build_1c_expert_v4_dataset.py` (расширение ingest-слоя и отчётности);
+  - `scripts/build_1c_expert_v4_dataset.py` (расширение ingest-слоя, нормализации в канонический sample-контракт и handoff в profile formatter);
   - новые/обновлённые адаптеры источников в `scripts/` или `tools/`;
   - документация по подготовке источников и сборке релизного корпуса.

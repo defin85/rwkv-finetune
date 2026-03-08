@@ -14,6 +14,19 @@
 - **WHEN** хотя бы один из трёх обязательных источников отсутствует или недоступен
 - **THEN** система MUST завершать сборку в статусе `FAIL` с явной причиной в отчёте
 
+### Requirement: Канонический sample-контракт merged 1C core корпуса
+Система MUST нормализовать записи из всех трёх источников в канонический sample-контракт `user_prompt` / `assistant_response` + metadata до этапа profile-specific serialization.
+
+#### Scenario: Валидная запись источника проходит normalisation
+- **WHEN** ingest обрабатывает валидную запись из `config export`, `syntax helper export` или `kb.1ci.com` snapshot
+- **THEN** итоговый sample MUST содержать `user_prompt`, `assistant_response`, `source_type`, `origin_ref`, `license`
+- **AND** sample MUST оставаться совместимым с общими provenance/lang/quality требованиями dataset strategy
+
+#### Scenario: Ingest пытается зафиксировать profile wire format как внутренний контракт
+- **WHEN** merged core ingest пытается сделать `Instruction/Response + <|endoftext|>` обязательным внутренним форматом sample
+- **THEN** такая реализация MUST считаться несоответствующей ingest contract
+- **AND** profile-specific serialization MUST выполняться на уровне release profile
+
 ### Requirement: Адаптер экспорта конфигурации 1C
 Система MUST извлекать из экспорта конфигурации 1C процедуры и функции как отдельные sample для 1C core корпуса.
 
@@ -26,7 +39,7 @@
 
 #### Scenario: Нормализация записи синтаксис-помощника
 - **WHEN** ingest получает валидную запись из выгрузки синтаксис-помощника
-- **THEN** запись MUST преобразовываться в sample с заполненными `instruction`, `response`, `source`, `origin_ref`
+- **THEN** запись MUST преобразовываться в канонический sample с заполненными `user_prompt`, `assistant_response`, `source_type`, `origin_ref`, `license`
 
 #### Scenario: Неподдерживаемый формат выгрузки синтаксис-помощника
 - **WHEN** входной формат выгрузки синтаксис-помощника не поддерживается контрактом
@@ -67,3 +80,4 @@
 #### Scenario: Передача core корпуса в этап profile mix
 - **WHEN** merged 1C core корпус прошёл source-ingestion quality gates
 - **THEN** этап `1C-Expert-v4` profile mix MUST использовать этот корпус как источник сегмента `onec_bsl`
+- **AND** profile formatter MUST применять `Instruction/Response + <|endoftext|>` только после этого handoff
