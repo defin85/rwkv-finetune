@@ -311,6 +311,7 @@ python scripts/build_1c_expert_v4_dataset.py \
 ```
 
 `coding-jsonl` и `ru-jsonl` должны резолвиться в canonical rows с валидными `source`, `license`, `origin_ref`, `contour` (`core|extended`) и русским `user_prompt`.
+Если `metadata.source` для сегментов `coding_general` / `ru_identity` не входит в baseline allowlist профиля, row обязан содержать непустой `metadata.quality_rationale`; иначе builder блокирует релиз fail-closed.
 
 Для `--bsl-root` provenance теперь задаётся явно через `--bsl-source`, `--bsl-license`, `--bsl-origin-ref`, `--bsl-contour`; builder сначала преобразует BSL-методы в canonical `onec_bsl` rows, а потом выполняет profile serialization. Profile builder fail-closed на нарушении этого contract для всех сегментов, включая `onec_bsl`.
 
@@ -319,8 +320,9 @@ python scripts/build_1c_expert_v4_dataset.py \
 Output report includes:
 
 - module coverage (`common/manager/object`)
-- mix counters (`onec_bsl/coding_general/ru_identity`)
+- mix counters и actual shares (`onec_bsl/coding_general/ru_identity`)
 - format gates (raw JSON object detection, `<|endoftext|>`, `Instruction/Response`)
+- shuffle metadata (`strategy`, `seed`, preview порядка сегментов, digest)
 - hard minimum size gate (default from profile: `200 MB`)
 
 Smoke command (build + `prepare_binidx.sh` + artifact check):

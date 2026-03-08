@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import random
 import re
@@ -42,6 +43,14 @@ class OneCMethod:
     body: str
     module_path: str
     module_type: str
+
+
+@dataclass
+class PreparedSample:
+    segment: str
+    source: str
+    text: str
+    metadata: dict[str, Any]
 
 
 def parse_args() -> argparse.Namespace:
@@ -160,6 +169,37 @@ def format_sample(instruction: str, response: str) -> str:
     return f"Instruction: {inst}\n\nResponse: {resp}\n{EOT_TOKEN}\n"
 
 
+def build_source_allowlist(profile: dict[str, Any]) -> dict[str, set[str]]:
+    allowlist: dict[str, set[str]] = {}
+    for item in profile.get("source_allowlist", []):
+        if not isinstance(item, dict):
+            continue
+        source = str(item.get("dataset_id", "")).strip()
+        segment = str(item.get("segment", "")).strip()
+        if source and segment:
+            allowlist.setdefault(segment, set()).add(source)
+    return allowlist
+
+
+def require_non_allowlisted_source_rationale(
+    row: dict[str, Any],
+    *,
+    allowed_sources: set[str],
+    path: Path,
+    index: int,
+) -> str | None:
+    metadata = row["metadata"]
+    source = str(metadata.get("source", "")).strip()
+    if source in allowed_sources:
+        return None
+
+    quality_rationale = metadata.get("quality_rationale")
+    if isinstance(quality_rationale, str) and quality_rationale.strip():
+        return None
+
+    return f"{path}:{index}: non_allowlisted_source_missing_quality_rationale:{source}"
+
+
 def onec_method_to_canonical_row(
     method: OneCMethod,
     bsl_root: Path,
@@ -207,16 +247,37 @@ def parse_instruction_output(payload: dict[str, Any]) -> tuple[str, str]:
     raise ValueError("Unsupported sample format: expected instruction/output or text")
 
 
-def load_segment_samples(path: Path) -> list[str]:
+def load_segment_samples(
+    path: Path,
+    *,
+    expected_segment: str,
+    allowed_sources: set[str],
+) -> list[PreparedSample]:
     rows = load_canonical_rows(path)
     failures: list[str] = []
-    samples: list[str] = []
+    samples: list[PreparedSample] = []
     for index, row in enumerate(rows, start=1):
         reasons = validate_canonical_row(row)
         if reasons:
             failures.append(f"{path}:{index}: {','.join(reasons)}")
             continue
-        samples.append(format_sample(row["user_prompt"], row["assistant_response"]))
+        source_reason = require_non_allowlisted_source_rationale(
+            row,
+            allowed_sources=allowed_sources,
+            path=path,
+            index=index,
+        )
+        if source_reason is not None:
+            failures.append(source_reason)
+            continue
+        samples.append(
+            PreparedSample(
+                segment=expected_segment,
+                source=str(row["metadata"]["source"]),
+                text=format_sample(row["user_prompt"], row["assistant_response"]),
+                metadata=dict(row["metadata"]),
+            )
+        )
     if failures:
         raise ValueError("\n".join(failures))
     return samples
@@ -232,7 +293,7 @@ def load_onec_samples(
     contour: str,
 ) -> list[str]:
     failures: list[str] = []
-    samples: list[str] = []
+    samples: list[PreparedSample] = []
     for method in methods:
         row = onec_method_to_canonical_row(
             method,
@@ -246,7 +307,14 @@ def load_onec_samples(
         if reasons:
             failures.append(f"{method.module_path}:{method.name}: {','.join(reasons)}")
             continue
-        samples.append(format_sample(row["user_prompt"], row["assistant_response"]))
+        samples.append(
+            PreparedSample(
+                segment="onec_bsl",
+                source=str(row["metadata"]["source"]),
+                text=format_sample(row["user_prompt"], row["assistant_response"]),
+                metadata=dict(row["metadata"]),
+            )
+        )
     if failures:
         raise ValueError("\n".join(failures))
     return samples
@@ -287,12 +355,15 @@ def pick_counts(available: dict[str, int], mix: dict[str, Any]) -> dict[str, int
     return counts
 
 
-def interleave_segments(segment_samples: dict[str, list[str]], rng: random.Random) -> list[str]:
+def interleave_segments(
+    segment_samples: dict[str, list[PreparedSample]],
+    rng: random.Random,
+) -> list[PreparedSample]:
     buckets = {name: list(rows) for name, rows in segment_samples.items()}
     for rows in buckets.values():
         rng.shuffle(rows)
 
-    mixed: list[str] = []
+    mixed: list[PreparedSample] = []
     while any(buckets.values()):
         active = [name for name in SEGMENT_ORDER if buckets[name]]
         rng.shuffle(active)
@@ -334,6 +405,29 @@ def validate_mix(counts: dict[str, int], mix: dict[str, Any]) -> list[str]:
     return reasons
 
 
+def calculate_actual_mix(counts: dict[str, int]) -> dict[str, float]:
+    total = sum(counts.values())
+    if total == 0:
+        return {key: 0.0 for key in SEGMENT_ORDER}
+    return {key: round(counts[key] / total, 6) for key in SEGMENT_ORDER}
+
+
+def build_shuffle_report(samples: list[PreparedSample], seed: int) -> dict[str, Any]:
+    segment_order = [sample.segment for sample in samples]
+    preview = segment_order[: min(16, len(segment_order))]
+    switches = sum(
+        1 for previous, current in zip(segment_order, segment_order[1:]) if previous != current
+    )
+    digest = hashlib.sha256("\n".join(segment_order).encode("utf-8")).hexdigest()
+    return {
+        "strategy": "segment_interleave_shuffle",
+        "seed": seed,
+        "segment_order_preview": preview,
+        "segment_switches": switches,
+        "segment_order_sha256": digest,
+    }
+
+
 def write_report(path: Path, report: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -350,6 +444,7 @@ def main() -> int:
 
     profile = read_json(profile_path)
     validate_profile(profile)
+    source_allowlist = build_source_allowlist(profile)
 
     methods = collect_onec_methods(bsl_root)
     onec_samples = load_onec_samples(
@@ -360,8 +455,16 @@ def main() -> int:
         origin_ref=args.bsl_origin_ref,
         contour=args.bsl_contour,
     )
-    coding_samples = load_segment_samples(coding_jsonl)
-    ru_samples = load_segment_samples(ru_jsonl)
+    coding_samples = load_segment_samples(
+        coding_jsonl,
+        expected_segment="coding_general",
+        allowed_sources=source_allowlist.get("coding_general", set()),
+    )
+    ru_samples = load_segment_samples(
+        ru_jsonl,
+        expected_segment="ru_identity",
+        allowed_sources=source_allowlist.get("ru_identity", set()),
+    )
     available = {
         "onec_bsl": len(onec_samples),
         "coding_general": len(coding_samples),
@@ -378,15 +481,17 @@ def main() -> int:
     mixed = interleave_segments(selected, rng)
 
     output_text.parent.mkdir(parents=True, exist_ok=True)
-    output_text.write_text("".join(mixed), encoding="utf-8")
+    output_text.write_text("".join(sample.text for sample in mixed), encoding="utf-8")
 
-    format_stats = validate_sample_format(mixed)
+    format_stats = validate_sample_format([sample.text for sample in mixed])
     mix_reasons = validate_mix(counts, profile["mix"])
+    actual_mix = calculate_actual_mix(counts)
     module_type_counts = {
         "common": sum(1 for row in methods if row.module_type == "common"),
         "manager": sum(1 for row in methods if row.module_type == "manager"),
         "object": sum(1 for row in methods if row.module_type == "object"),
     }
+    shuffle_report = build_shuffle_report(mixed, args.seed)
 
     reasons: list[str] = []
     for key, value in module_type_counts.items():
@@ -421,8 +526,10 @@ def main() -> int:
         "counts": {
             "available": available,
             "selected": counts,
+            "actual_mix": actual_mix,
             "module_type_coverage": module_type_counts,
         },
+        "shuffle": shuffle_report,
         "gates": {
             "format": format_stats,
             "mix_tolerance_pp": profile["mix"]["tolerance_pp"],

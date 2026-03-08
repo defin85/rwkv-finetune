@@ -232,11 +232,16 @@ python scripts/build_1c_expert_v4_dataset.py \
   --report-output data/raw/1c_expert_v4.release.report.json
 ```
 
+Для `coding_jsonl` / `ru_jsonl`:
+- baseline external sources должны совпадать с allowlist профиля;
+- если `metadata.source` не входит в allowlist для своего сегмента, row MUST содержать непустой `metadata.quality_rationale`, иначе builder завершится fail-closed.
+
 Обязательные gate-проверки профиля:
 - [ ] mix `50/30/20` по сегментам (`onec_bsl/coding_general/ru_identity`) в допуске ±5 п.п.
 - [ ] покрытие модулей 1C: `common`, `manager`, `object`.
 - [ ] в каждом sample есть `Instruction:` + `Response:` + `<|endoftext|>`.
 - [ ] нет сырых JSON-объектов в train-text.
+- [ ] release-report фиксирует actual mix и shuffle metadata.
 - [ ] размер train-text не ниже `200 MB` (или явно заданного override для тестового режима).
 
 Smoke-проверка:

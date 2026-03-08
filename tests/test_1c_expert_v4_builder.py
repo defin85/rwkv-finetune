@@ -46,6 +46,8 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
         *,
         coding_prompts: tuple[str, str] = ("Напиши функцию C1", "Напиши функцию C2"),
         ru_prompts: tuple[str, str] = ("Объясни RUS1", "Объясни RUS2"),
+        coding_sources: tuple[str, str] = ("unit-test", "unit-test"),
+        ru_sources: tuple[str, str] = ("unit-test", "unit-test"),
         coding_metadata_overrides: tuple[dict | None, dict | None] = (None, None),
         ru_metadata_overrides: tuple[dict | None, dict | None] = (None, None),
     ) -> tuple[Path, Path]:
@@ -59,12 +61,13 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
                             "user_prompt": coding_prompts[0],
                             "assistant_response": "def c1():\n    return 'c1'",
                             "metadata": {
-                                "source": "unit-test",
+                                "source": coding_sources[0],
                                 "license": "internal",
                                 "origin_ref": "local://coding/c1",
                                 "contour": "extended",
                                 "segment": "coding_general",
                                 "split": "train",
+                                "quality_rationale": "Synthetic coding fixture for unit testing.",
                                 **(coding_metadata_overrides[0] or {}),
                             },
                         },
@@ -75,12 +78,13 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
                             "user_prompt": coding_prompts[1],
                             "assistant_response": "def c2():\n    return 'c2'",
                             "metadata": {
-                                "source": "unit-test",
+                                "source": coding_sources[1],
                                 "license": "internal",
                                 "origin_ref": "local://coding/c2",
                                 "contour": "extended",
                                 "segment": "coding_general",
                                 "split": "train",
+                                "quality_rationale": "Synthetic coding fixture for unit testing.",
                                 **(coding_metadata_overrides[1] or {}),
                             },
                         },
@@ -99,12 +103,13 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
                             "user_prompt": ru_prompts[0],
                             "assistant_response": "Это ответ ANS1",
                             "metadata": {
-                                "source": "unit-test",
+                                "source": ru_sources[0],
                                 "license": "internal",
                                 "origin_ref": "local://ru/rus1",
                                 "contour": "extended",
                                 "segment": "ru_identity",
                                 "split": "train",
+                                "quality_rationale": "Synthetic RU fixture for unit testing.",
                                 **(ru_metadata_overrides[0] or {}),
                             },
                         },
@@ -115,12 +120,13 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
                             "user_prompt": ru_prompts[1],
                             "assistant_response": "Это ответ ANS2",
                             "metadata": {
-                                "source": "unit-test",
+                                "source": ru_sources[1],
                                 "license": "internal",
                                 "origin_ref": "local://ru/rus2",
                                 "contour": "extended",
                                 "segment": "ru_identity",
                                 "split": "train",
+                                "quality_rationale": "Synthetic RU fixture for unit testing.",
                                 **(ru_metadata_overrides[1] or {}),
                             },
                         },
@@ -239,6 +245,41 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
             self.assertIn("Instruction: Напиши функцию C1", text)
             self.assertIn("Instruction: Объясни RUS1", text)
 
+    def test_pipeline_reports_actual_mix_and_shuffle_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            bsl_root = root / "onec"
+            bsl_root.mkdir(parents=True, exist_ok=True)
+            self.write_bsl_modules(bsl_root, include_manager=True)
+            coding, ru = self.write_canonical_jsonl_inputs(root)
+            result = self.run_builder(root, bsl_root, coding, ru, hard_min_mb=0)
+            self.assertEqual(result.returncode, 0, msg=result.stderr + "\n" + result.stdout)
+
+            report = json.loads((root / "release.report.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                report["counts"]["actual_mix"],
+                {
+                    "onec_bsl": 0.5,
+                    "coding_general": 0.333333,
+                    "ru_identity": 0.166667,
+                },
+            )
+            self.assertEqual(report["shuffle"]["strategy"], "segment_interleave_shuffle")
+            self.assertEqual(report["shuffle"]["seed"], 42)
+            self.assertEqual(
+                report["shuffle"]["segment_order_preview"],
+                [
+                    "onec_bsl",
+                    "coding_general",
+                    "ru_identity",
+                    "coding_general",
+                    "onec_bsl",
+                    "onec_bsl",
+                ],
+            )
+            self.assertGreater(report["shuffle"]["segment_switches"], 0)
+            self.assertTrue(report["shuffle"]["segment_order_sha256"])
+
     def test_pipeline_fails_closed_on_non_russian_prompt(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
@@ -252,6 +293,35 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
             result = self.run_builder(root, bsl_root, coding, ru, hard_min_mb=0)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("user_prompt_not_russian", result.stderr + result.stdout)
+
+    def test_pipeline_fails_closed_on_non_allowlisted_external_source_without_quality_rationale(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            bsl_root = root / "onec"
+            bsl_root.mkdir(parents=True, exist_ok=True)
+            self.write_bsl_modules(bsl_root, include_manager=True)
+            coding, ru = self.write_canonical_jsonl_inputs(
+                root,
+                coding_sources=("custom/external-coding", "custom/external-coding"),
+                coding_metadata_overrides=(
+                    {
+                        "license": "open",
+                        "origin_ref": "https://huggingface.co/datasets/custom/external-coding",
+                        "quality_rationale": "",
+                    },
+                    {
+                        "license": "open",
+                        "origin_ref": "https://huggingface.co/datasets/custom/external-coding",
+                        "quality_rationale": "",
+                    },
+                ),
+            )
+            result = self.run_builder(root, bsl_root, coding, ru, hard_min_mb=0)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "non_allowlisted_source_missing_quality_rationale",
+                result.stderr + result.stdout,
+            )
 
     def test_pipeline_fails_closed_on_missing_provenance_metadata(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
