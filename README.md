@@ -314,6 +314,8 @@ python scripts/build_1c_expert_v4_dataset.py \
 
 Для `--bsl-root` provenance теперь задаётся явно через `--bsl-source`, `--bsl-license`, `--bsl-origin-ref`, `--bsl-contour`; builder сначала преобразует BSL-методы в canonical `onec_bsl` rows, а потом выполняет profile serialization. Profile builder fail-closed на нарушении этого contract для всех сегментов, включая `onec_bsl`.
 
+Текущее ограничение: BSL quality gate пока использует lightweight structural diagnostics. Parser-level validation оформлена как future TODO `rwkv-finetune-v8q.3` и планируется через внешний проект `/home/egor/code/bsl-gradual-types` после его стабилизации.
+
 Output report includes:
 
 - module coverage (`common/manager/object`)

@@ -116,6 +116,7 @@ python scripts/validate_dataset_release.py \
 - [ ] `created_at_policy.source` отражает deterministic source timestamp policy или явный override.
 - [ ] Train/Eval leakage = `0` по exact и near hash.
 - [ ] Для 1C sample нет BSL diagnostics-level нарушений на release gate.
+- [ ] Parser-level BSL validation отслеживается отдельно как future TODO `rwkv-finetune-v8q.3` и до интеграции `bsl-gradual-types` не считается реализованной.
 
 Для repo/time split с отдельными eval bucket'ами:
 

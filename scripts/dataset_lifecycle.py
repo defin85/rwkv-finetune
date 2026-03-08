@@ -282,6 +282,8 @@ def bsl_diagnostics(row: dict[str, Any]) -> list[str]:
     text = str(row.get("assistant_response", ""))
     if segment != "onec_bsl" and not BSL_MARKER_RE.search(text):
         return []
+    # TODO(rwkv-finetune-v8q.3): route BSL quality gates through parser-level
+    # diagnostics from bsl-gradual-types when that external dependency is ready.
     return diagnose_bsl_text(text)
 
 

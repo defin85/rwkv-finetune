@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Lightweight BSL structural diagnostics for dataset quality gates."""
+"""Lightweight BSL structural diagnostics for dataset quality gates.
+
+TODO(rwkv-finetune-v8q.3): replace this structural regex/stack checker with
+parser-level validation once /home/egor/code/bsl-gradual-types is stable enough
+for fail-closed runtime integration.
+"""
 
 from __future__ import annotations
 
