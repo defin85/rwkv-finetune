@@ -14,9 +14,17 @@ import hashlib
 import json
 import re
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from dataset_lifecycle import build_canonical_row, build_release_manifest, sha256_file
 
 
 METHOD_PATTERN = re.compile(
@@ -74,6 +82,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--eval-output", required=True, help="Output eval JSONL path.")
     parser.add_argument("--report-output", required=True, help="Output report JSON path.")
     parser.add_argument(
+        "--dataset-version",
+        default="v0",
+        help="Dataset version label for release manifest sections.",
+    )
+    parser.add_argument(
         "--hard-min-mb",
         type=int,
         default=200,
@@ -113,14 +126,7 @@ def write_jsonl(path: Path, rows: list[Sample]) -> None:
     with path.open("w", encoding="utf-8") as handle:
         for row in rows:
             handle.write(
-                json.dumps(
-                    {
-                        "user_prompt": row.user_prompt,
-                        "assistant_response": row.assistant_response,
-                        "metadata": row.metadata,
-                    },
-                    ensure_ascii=False,
-                )
+                json.dumps(build_canonical_row(row.user_prompt, row.assistant_response, row.metadata), ensure_ascii=False)
                 + "\n"
             )
 
@@ -434,14 +440,7 @@ def calculate_unique_volume(samples: list[Sample]) -> float:
         unique_by_near.setdefault(sample.near_hash, sample)
     total_bytes = 0
     for sample in unique_by_near.values():
-        payload = json.dumps(
-            {
-                "user_prompt": sample.user_prompt,
-                "assistant_response": sample.assistant_response,
-                "metadata": sample.metadata,
-            },
-            ensure_ascii=False,
-        )
+        payload = json.dumps(build_canonical_row(sample.user_prompt, sample.assistant_response, sample.metadata), ensure_ascii=False)
         total_bytes += len(payload.encode("utf-8")) + 1
     return total_bytes / (1024 * 1024)
 
@@ -568,6 +567,59 @@ def main() -> int:
         write_jsonl(train_output, train_rows)
         write_jsonl(dev_output, dev_rows)
         write_jsonl(eval_output, eval_rows)
+        lifecycle_manifest = build_release_manifest(
+            dataset_name=f"{manifest['source_family_id']}-trusted",
+            dataset_version=args.dataset_version,
+            created_by="scripts/build_repo_family_trusted_corpus.py",
+            rows_by_split={
+                "train": [build_canonical_row(row.user_prompt, row.assistant_response, row.metadata) for row in train_rows],
+                "dev": [build_canonical_row(row.user_prompt, row.assistant_response, row.metadata) for row in dev_rows],
+                "eval": [build_canonical_row(row.user_prompt, row.assistant_response, row.metadata) for row in eval_rows],
+            },
+            split_artifacts={
+                "train": {"path": str(train_output), "sha256": sha256_file(train_output), "rows_total": len(train_rows)},
+                "dev": {"path": str(dev_output), "sha256": sha256_file(dev_output), "rows_total": len(dev_rows)},
+                "eval": {"path": str(eval_output), "sha256": sha256_file(eval_output), "rows_total": len(eval_rows)},
+            },
+            enforce_balance=False,
+            required_eval_categories=(),
+            sampling_policy={
+                "ru_user_prompt_only": True,
+                "task_categories": ["code_generation", "refactoring", "onec_query", "explanation_review"],
+                "category_baseline": {
+                    "code_generation": 0.35,
+                    "refactoring": 0.35,
+                    "onec_query": 0.15,
+                    "explanation_review": 0.15,
+                },
+                "source_family_id": manifest["source_family_id"],
+            },
+            split_policy={
+                "strategy": "source_family_temporal_lineage",
+                "sibling_repos_are_single_boundary": True,
+                "required_eval_categories": [],
+            },
+            dedup_policy={
+                "exact_hash_basis": "sha256(user_prompt + assistant_response)",
+                "near_hash_basis": "sha256(normalized assistant_response)",
+            },
+        )
+        lifecycle_reasons = (
+            []
+            if lifecycle_manifest["quality_status"] == "PASS"
+            else list(lifecycle_manifest["quality_reasons"])
+        )
+        report_reasons = [] if report["quality_status"] == "PASS" else list(report["quality_reasons"])
+        combined_reasons = [
+            *lifecycle_reasons,
+            *[reason for reason in report_reasons if reason not in lifecycle_reasons],
+        ]
+        report = {
+            **lifecycle_manifest,
+            **report,
+            "quality_status": "PASS" if not combined_reasons else "FAIL",
+            "quality_reasons": combined_reasons or ["quality gates passed"],
+        }
         write_json(report_output, report)
         print(f"train_rows: {len(train_rows)}")
         print(f"dev_rows: {len(dev_rows)}")

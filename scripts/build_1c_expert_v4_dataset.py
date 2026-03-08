@@ -7,9 +7,17 @@ import argparse
 import json
 import random
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from dataset_lifecycle import load_canonical_rows
 
 
 METHOD_PATTERN = re.compile(
@@ -156,21 +164,10 @@ def parse_instruction_output(payload: dict[str, Any]) -> tuple[str, str]:
 
 
 def load_segment_samples(path: Path) -> list[str]:
-    samples: list[str] = []
-    with path.open("r", encoding="utf-8") as handle:
-        for line_number, line in enumerate(handle, start=1):
-            raw = line.strip()
-            if not raw:
-                continue
-            payload = json.loads(raw)
-            if not isinstance(payload, dict):
-                raise ValueError(f"{path}:{line_number} expected JSON object")
-            instruction, response = parse_instruction_output(payload)
-            if response:
-                samples.append(format_sample(instruction, response))
-            else:
-                samples.append(instruction.strip() + "\n")
-    return samples
+    return [
+        format_sample(row["user_prompt"], row["assistant_response"])
+        for row in load_canonical_rows(path)
+    ]
 
 
 def validate_profile(profile: dict[str, Any]) -> None:

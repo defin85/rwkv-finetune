@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "stage_dirs": {
+    "raw": "data/raw",
+    "interim": "data/interim",
+    "curated": "data/curated"
+  },
+  "version_pattern": "^v[0-9]+(?:\\.[0-9]+)*$",
+  "task_categories": [
+    "code_generation",
+    "refactoring",
+    "onec_query",
+    "explanation_review"
+  ],
+  "category_baseline": {
+    "code_generation": 0.35,
+    "refactoring": 0.35,
+    "onec_query": 0.15,
+    "explanation_review": 0.15
+  },
+  "balance_tolerance_pp": 5,
+  "canonical_sample_contract": {
+    "required_top_level_fields": [
+      "user_prompt",
+      "assistant_response",
+      "metadata"
+    ],
+    "required_metadata_fields": [
+      "source",
+      "license",
+      "origin_ref",
+      "contour",
+      "segment",
+      "split"
+    ],
+    "compatibility_text_field": "text"
+  }
+}

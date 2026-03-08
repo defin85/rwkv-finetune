@@ -65,6 +65,87 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
         )
         return coding, ru
 
+    def write_canonical_jsonl_inputs(self, root: Path) -> tuple[Path, Path]:
+        coding = root / "coding.canonical.jsonl"
+        ru = root / "ru.canonical.jsonl"
+        coding.write_text(
+            "\n".join(
+                [
+                    json.dumps(
+                        {
+                            "user_prompt": "Напиши функцию C1",
+                            "assistant_response": "def c1():\n    return 'c1'",
+                            "metadata": {
+                                "source": "unit-test",
+                                "license": "internal",
+                                "origin_ref": "local://coding/c1",
+                                "contour": "extended",
+                                "segment": "coding_general",
+                                "split": "train",
+                            },
+                        },
+                        ensure_ascii=False,
+                    ),
+                    json.dumps(
+                        {
+                            "user_prompt": "Напиши функцию C2",
+                            "assistant_response": "def c2():\n    return 'c2'",
+                            "metadata": {
+                                "source": "unit-test",
+                                "license": "internal",
+                                "origin_ref": "local://coding/c2",
+                                "contour": "extended",
+                                "segment": "coding_general",
+                                "split": "train",
+                            },
+                        },
+                        ensure_ascii=False,
+                    ),
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        ru.write_text(
+            "\n".join(
+                [
+                    json.dumps(
+                        {
+                            "user_prompt": "Объясни RUS1",
+                            "assistant_response": "Это ответ ANS1",
+                            "metadata": {
+                                "source": "unit-test",
+                                "license": "internal",
+                                "origin_ref": "local://ru/rus1",
+                                "contour": "extended",
+                                "segment": "ru_identity",
+                                "split": "train",
+                            },
+                        },
+                        ensure_ascii=False,
+                    ),
+                    json.dumps(
+                        {
+                            "user_prompt": "Объясни RUS2",
+                            "assistant_response": "Это ответ ANS2",
+                            "metadata": {
+                                "source": "unit-test",
+                                "license": "internal",
+                                "origin_ref": "local://ru/rus2",
+                                "contour": "extended",
+                                "segment": "ru_identity",
+                                "split": "train",
+                            },
+                        },
+                        ensure_ascii=False,
+                    ),
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return coding, ru
+
     def run_builder(
         self, workdir: Path, bsl_root: Path, coding_jsonl: Path, ru_jsonl: Path, hard_min_mb: int
     ) -> subprocess.CompletedProcess[str]:
@@ -139,6 +220,19 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
             self.assertTrue(
                 any(reason.startswith("output_size_mb=") for reason in report["quality_reasons"])
             )
+
+    def test_pipeline_accepts_canonical_user_prompt_assistant_response_rows(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            bsl_root = root / "onec"
+            bsl_root.mkdir(parents=True, exist_ok=True)
+            self.write_bsl_modules(bsl_root, include_manager=True)
+            coding, ru = self.write_canonical_jsonl_inputs(root)
+            result = self.run_builder(root, bsl_root, coding, ru, hard_min_mb=0)
+            self.assertEqual(result.returncode, 0, msg=result.stderr + "\n" + result.stdout)
+            text = (root / "release.txt").read_text(encoding="utf-8")
+            self.assertIn("Instruction: Напиши функцию C1", text)
+            self.assertIn("Instruction: Объясни RUS1", text)
 
 
 if __name__ == "__main__":

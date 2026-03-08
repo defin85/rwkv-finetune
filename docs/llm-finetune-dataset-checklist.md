@@ -25,14 +25,32 @@
 
 ## 3) Формат данных
 
-Для текущего pipeline репозитория канонический формат строки:
+Канонический формат sample для lifecycle-слоя:
+
+```json
+{
+  "user_prompt": "<русский prompt>",
+  "assistant_response": "<answer>",
+  "metadata": {
+    "source": "<source-id>",
+    "license": "<license>",
+    "origin_ref": "<origin-ref>",
+    "contour": "core|extended",
+    "segment": "<segment>",
+    "split": "train|dev|eval"
+  }
+}
+```
+
+Derived compatibility-формат для текущих consumer'ов токенизации:
 
 ```json
 {"text":"User: <prompt>\nAssistant: <answer>"}
 ```
 
 - [ ] Каждая строка JSONL валидна (один JSON-объект на строку).
-- [ ] Внутри `text` строго один `User:` и один `Assistant:`.
+- [ ] Каноническая запись содержит `user_prompt` / `assistant_response` / `metadata`.
+- [ ] Если используется derived `text`, он синхронизирован с канонической парой.
 - [ ] Формат prompt/inference совпадает (не смешивать разные chat templates в одном train).
 
 ## 4) Баланс и состав выборки
@@ -81,6 +99,21 @@ python scripts/check_dataset_quality.py \
 - [ ] `quality_status = PASS`
 - [ ] Нет критических причин в `quality_reasons`
 
+Для canonical release manifest:
+
+```bash
+python scripts/validate_dataset_release.py \
+  --train /path/to/train.jsonl \
+  --eval /path/to/eval.jsonl \
+  --manifest-output data/curated/example.manifest.json \
+  --dataset-name example \
+  --dataset-version v0
+```
+
+- [ ] В manifest есть `source_summary`, `license_summary`, `sampling_policy`, `dedup_policy`, `split_policy`.
+- [ ] Train/Eval leakage = `0` по exact и near hash.
+- [ ] Для 1C sample нет BSL syntax/shape нарушений на release gate.
+
 ## 7) Leakage и split-политика
 
 - [ ] Train/Eval разнесены по времени/источнику или по документам (а не случайно построчно из одного параграфа).
@@ -92,6 +125,8 @@ python scripts/check_dataset_quality.py \
 - [ ] Фиксирован seed в генераторе датасета.
 - [ ] Зафиксированы версии скриптов/конфигов и sha256 датасета.
 - [ ] Для каждого прогона уникальные `run_name`/`run_id`.
+- [ ] Версия датасета удовлетворяет шаблону `vN` или `vN.M`.
+- [ ] Используются stage directories `data/raw`, `data/interim`, `data/curated`.
 
 Команда генерации identity-набора:
 

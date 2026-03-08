@@ -200,6 +200,39 @@ If DAG is triggered from UI without custom `Config`, defaults are read from `con
 
 ## 1C-Expert-v4 Dataset Pipeline
 
+Dataset lifecycle policy:
+
+- `configs/dataset/dataset-lifecycle.policy.json`
+
+Canonical sample contract for lifecycle validation:
+
+```json
+{
+  "user_prompt": "<русский prompt>",
+  "assistant_response": "<answer>",
+  "metadata": {
+    "source": "<source-id>",
+    "license": "<license>",
+    "origin_ref": "<origin-ref>",
+    "contour": "core|extended",
+    "segment": "<segment>",
+    "split": "train|dev|eval"
+  },
+  "text": "User: <prompt>\\nAssistant: <answer>"
+}
+```
+
+Release validator for canonical splits:
+
+```bash
+python scripts/validate_dataset_release.py \
+  --train /path/to/train.jsonl \
+  --eval /path/to/eval.jsonl \
+  --manifest-output data/curated/example.manifest.json \
+  --dataset-name example \
+  --dataset-version v0
+```
+
 Machine-readable profile:
 
 - `configs/dataset/1c-expert-v4.profile.json`

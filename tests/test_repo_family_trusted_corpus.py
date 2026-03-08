@@ -152,6 +152,8 @@ class RepoFamilyTrustedCorpusTests(unittest.TestCase):
             self.assertEqual(row["metadata"]["segment"], "onec_bsl")
             self.assertEqual(len(row["metadata"]["alternative_origin_refs"]), 2)
             self.assertIn("Напиши", row["user_prompt"])
+            self.assertIn("User:", row["text"])
+            self.assertIn("Assistant:", row["text"])
             report = json.loads((root / "release.report.json").read_text(encoding="utf-8"))
             self.assertEqual(report["stats"]["snapshot"]["identical_overlap_paths"], 1)
 
