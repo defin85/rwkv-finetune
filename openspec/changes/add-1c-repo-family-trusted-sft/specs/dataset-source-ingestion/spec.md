@@ -15,7 +15,7 @@
 Система MUST выполнять exact overlap detection и канонизацию snapshot-содержимого между sibling-репозиториями одного source family до расчёта объёма корпуса.
 
 #### Scenario: Идентичный путь и содержимое присутствуют в двух sibling snapshot
-- **WHEN** одинаковый BSL/XML артефакт найден в нескольких репозиториях source family
+- **WHEN** одинаковый BSL-артефакт найден в нескольких репозиториях source family
 - **THEN** система MUST учитывать его как один canonical sample и MUST фиксировать альтернативные origin references в отчёте
 
 #### Scenario: Одинаковый путь имеет разное содержимое в sibling snapshot
@@ -34,10 +34,10 @@
 - **THEN** система MUST пропускать такой коммит и MUST фиксировать причину skip в отчёте
 
 ### Requirement: Поддерживаемая trusted input surface для repo family v1
-Система MUST включать в trusted ingest v1 только текстовые snapshot/history артефакты source family и MUST исключать `.epf`-связанные BSL-модули из trusted контура.
+Система MUST включать в trusted ingest v1 только текстовые BSL snapshot/history артефакты source family и MUST исключать `.epf`-связанные BSL-модули из trusted контура.
 
-#### Scenario: Snapshot содержит текстовый BSL/XML export или привязанный `Ext/*` модуль
-- **WHEN** ingest обрабатывает текстовый export из `conf_files` или текстовый BSL-модуль из поддерживаемого дерева source family
+#### Scenario: Snapshot содержит текстовый BSL-модуль из поддерживаемого дерева source family
+- **WHEN** ingest обрабатывает текстовый BSL-модуль из поддерживаемого дерева source family
 - **THEN** система MUST допускать такой артефакт в trusted ingest при соблюдении остальных правил provenance и canonicalization
 
 #### Scenario: Snapshot или history содержит `.epf`-связанный BSL-модуль

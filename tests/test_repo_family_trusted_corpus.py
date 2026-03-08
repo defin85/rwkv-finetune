@@ -64,16 +64,60 @@ class RepoFamilyTrustedCorpusTests(unittest.TestCase):
         path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         return path
 
+    def write_profile(
+        self,
+        root: Path,
+        *,
+        profile_id: str = "1c-expert-v4",
+        target_min_mb: int = 500,
+        target_max_mb: int = 1024,
+        hard_min_mb: int = 200,
+    ) -> Path:
+        profile = {
+            "profile_id": profile_id,
+            "version": 1,
+            "description": "Test dataset profile for repo-family builder.",
+            "volume": {
+                "target_min_mb": target_min_mb,
+                "target_max_mb": target_max_mb,
+                "hard_min_mb": hard_min_mb,
+            },
+            "mix": {
+                "onec_bsl": 0.5,
+                "coding_general": 0.3,
+                "ru_identity": 0.2,
+                "tolerance_pp": 5,
+            },
+            "required_provenance_fields": [
+                "source",
+                "license",
+                "origin_ref",
+                "segment",
+            ],
+            "release_gates": {
+                "require_shuffle": True,
+                "forbid_raw_json_objects_in_train_text": True,
+                "require_eot_per_sample": True,
+            },
+            "source_allowlist": [],
+        }
+        path = root / "dataset.profile.json"
+        path.write_text(json.dumps(profile, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return path
+
     def run_builder(
         self,
         workdir: Path,
         manifest_path: Path,
+        profile_path: Path | None = None,
         hard_min_mb: int = 0,
         max_history_files: int = 3,
     ) -> subprocess.CompletedProcess[str]:
         command = [
             "python",
             str(self.script),
+            "--profile",
+            str(profile_path or (self.repo_root / "configs" / "dataset" / "1c-expert-v4.profile.json")),
             "--family-manifest",
             str(manifest_path),
             "--train-output",
@@ -307,6 +351,55 @@ class RepoFamilyTrustedCorpusTests(unittest.TestCase):
             self.assertTrue(
                 any(reason.startswith("attained_unique_volume_mb=") for reason in report["quality_reasons"])
             )
+
+    def test_release_report_uses_target_from_dataset_profile_without_blocking_release(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            repo = root / "repo"
+            self.init_repo(repo)
+            self.write_file(
+                repo,
+                "CommonModules/CommonModule.bsl",
+                "Процедура Тест()\n    Сообщить(\"ok\");\nКонецПроцедуры\n",
+            )
+            self.commit_all(repo, "initial", "2026-01-01T00:00:00+0000")
+            manifest = self.write_manifest(root, [repo], repo)
+            profile = self.write_profile(root, target_min_mb=5, hard_min_mb=0)
+
+            result = self.run_builder(root, manifest, profile_path=profile, hard_min_mb=0)
+
+            self.assertEqual(result.returncode, 0, msg=result.stderr + "\n" + result.stdout)
+            report = json.loads((root / "release.report.json").read_text(encoding="utf-8"))
+            self.assertEqual(report["quality_status"], "PASS")
+            self.assertEqual(report["profile_id"], "1c-expert-v4")
+            self.assertEqual(report["gates"]["target_min_mb"], 5)
+            self.assertGreater(report["gates"]["deficit_to_target_min_mb"], 0)
+            self.assertEqual(report["gates"]["hard_min_mb"], 0)
+
+    def test_profile_without_target_minimum_fails_closed(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            repo = root / "repo"
+            self.init_repo(repo)
+            self.write_file(
+                repo,
+                "CommonModules/CommonModule.bsl",
+                "Процедура Тест()\n    Сообщить(\"ok\");\nКонецПроцедуры\n",
+            )
+            self.commit_all(repo, "initial", "2026-01-01T00:00:00+0000")
+            manifest = self.write_manifest(root, [repo], repo)
+            profile_path = self.write_profile(root)
+            profile_payload = json.loads(profile_path.read_text(encoding="utf-8"))
+            del profile_payload["volume"]["target_min_mb"]
+            profile_path.write_text(json.dumps(profile_payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+            result = self.run_builder(root, manifest, profile_path=profile_path, hard_min_mb=0)
+
+            self.assertNotEqual(result.returncode, 0)
+            report = json.loads((root / "release.report.json").read_text(encoding="utf-8"))
+            self.assertEqual(report["quality_status"], "FAIL")
+            self.assertIn("invalid_profile", report["quality_reasons"])
+            self.assertIn("target_min_mb", report["error_details"])
 
 
 if __name__ == "__main__":

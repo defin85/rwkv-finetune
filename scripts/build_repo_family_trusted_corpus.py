@@ -76,6 +76,11 @@ class Sample:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build trusted local repo-family corpus.")
+    parser.add_argument(
+        "--profile",
+        default="configs/dataset/1c-expert-v4.profile.json",
+        help="Path to shared dataset profile JSON used for volume targets.",
+    )
     parser.add_argument("--family-manifest", required=True, help="Path to repo family manifest JSON.")
     parser.add_argument("--train-output", required=True, help="Output train JSONL path.")
     parser.add_argument("--dev-output", required=True, help="Output dev JSONL path.")
@@ -162,6 +167,30 @@ def validate_manifest(path: Path) -> dict[str, Any]:
     manifest["repo_roots"] = repo_roots
     manifest["canonical_snapshot_root"] = canonical_root
     return manifest
+
+
+def validate_profile(path: Path) -> dict[str, Any]:
+    profile = read_json(path)
+    profile_id = profile.get("profile_id")
+    if not isinstance(profile_id, str) or not profile_id.strip():
+        raise ValueError("Profile is missing profile_id")
+    volume = profile.get("volume")
+    if not isinstance(volume, dict):
+        raise ValueError("Profile is missing volume section")
+    resolved: dict[str, Any] = {"profile_id": profile_id.strip()}
+    for key in ("target_min_mb", "hard_min_mb"):
+        value = volume.get(key)
+        if value is None:
+            raise ValueError(f"Profile volume key is missing: {key}")
+        try:
+            resolved[key] = int(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Profile volume key '{key}' must be an integer") from exc
+        if resolved[key] < 0:
+            raise ValueError(f"Profile volume key '{key}' must be >= 0")
+    if resolved["target_min_mb"] < resolved["hard_min_mb"]:
+        raise ValueError("Profile target_min_mb must be >= hard_min_mb")
+    return resolved
 
 
 def infer_module_type(path: str) -> str:
@@ -445,7 +474,12 @@ def calculate_unique_volume(samples: list[Sample]) -> float:
     return total_bytes / (1024 * 1024)
 
 
-def build_release(manifest: dict[str, Any], hard_min_mb: int, max_history_files: int) -> tuple[list[Sample], list[Sample], list[Sample], dict[str, Any]]:
+def build_release(
+    manifest: dict[str, Any],
+    target_min_mb: int,
+    hard_min_mb: int,
+    max_history_files: int,
+) -> tuple[list[Sample], list[Sample], list[Sample], dict[str, Any]]:
     snapshot_stats = {
         "excluded_epf_paths": 0,
         "identical_overlap_paths": 0,
@@ -504,8 +538,10 @@ def build_release(manifest: dict[str, Any], hard_min_mb: int, max_history_files:
             },
         },
         "gates": {
+            "target_min_mb": target_min_mb,
             "hard_min_mb": hard_min_mb,
             "attained_unique_volume_mb": round(attained_unique_volume_mb, 6),
+            "deficit_to_target_min_mb": round(max(0.0, target_min_mb - attained_unique_volume_mb), 6),
             "deficit_to_hard_min_mb": round(max(0.0, hard_min_mb - attained_unique_volume_mb), 6),
         },
         "quality_status": "PASS" if not quality_reasons else "FAIL",
@@ -514,8 +550,18 @@ def build_release(manifest: dict[str, Any], hard_min_mb: int, max_history_files:
     return train_rows, history_dev, history_eval, report
 
 
-def failure_report(args: argparse.Namespace, reason: str, details: str = "") -> dict[str, Any]:
-    return {
+def failure_report(
+    args: argparse.Namespace,
+    reason: str,
+    details: str = "",
+    *,
+    profile_path: Path | None = None,
+    profile_id: str | None = None,
+    target_min_mb: int | None = None,
+    hard_min_mb: int | None = None,
+) -> dict[str, Any]:
+    resolved_hard_min_mb = args.hard_min_mb if args.hard_min_mb is not None else hard_min_mb
+    report = {
         "quality_status": "FAIL",
         "quality_reasons": [reason],
         "error_details": details,
@@ -542,26 +588,45 @@ def failure_report(args: argparse.Namespace, reason: str, details: str = "") -> 
             },
         },
         "gates": {
-            "hard_min_mb": args.hard_min_mb,
+            "target_min_mb": float(target_min_mb) if target_min_mb is not None else None,
+            "hard_min_mb": resolved_hard_min_mb,
             "attained_unique_volume_mb": 0.0,
-            "deficit_to_hard_min_mb": float(args.hard_min_mb),
+            "deficit_to_target_min_mb": float(target_min_mb) if target_min_mb is not None else None,
+            "deficit_to_hard_min_mb": float(resolved_hard_min_mb) if resolved_hard_min_mb is not None else None,
         },
     }
+    if profile_id is not None:
+        report["profile_id"] = profile_id
+    if profile_path is not None:
+        report["profile_path"] = str(profile_path)
+    return report
 
 
 def main() -> int:
     args = parse_args()
+    profile_path = Path(args.profile).resolve()
     manifest_path = Path(args.family_manifest).resolve()
     train_output = Path(args.train_output).resolve()
     dev_output = Path(args.dev_output).resolve()
     eval_output = Path(args.eval_output).resolve()
     report_output = Path(args.report_output).resolve()
+    profile_contract: dict[str, Any] | None = None
 
     try:
+        try:
+            profile_contract = validate_profile(profile_path)
+        except ValueError as exc:
+            raise RepoFamilyError("invalid_profile", str(exc)) from exc
         manifest = validate_manifest(manifest_path)
+        hard_min_mb = (
+            int(args.hard_min_mb)
+            if args.hard_min_mb is not None
+            else int(profile_contract["hard_min_mb"])
+        )
         train_rows, dev_rows, eval_rows, report = build_release(
             manifest=manifest,
-            hard_min_mb=args.hard_min_mb,
+            target_min_mb=int(profile_contract["target_min_mb"]),
+            hard_min_mb=hard_min_mb,
             max_history_files=args.max_history_files,
         )
         write_jsonl(train_output, train_rows)
@@ -615,6 +680,8 @@ def main() -> int:
             *[reason for reason in report_reasons if reason not in lifecycle_reasons],
         ]
         report = {
+            "profile_id": profile_contract["profile_id"],
+            "profile_path": str(profile_path),
             **lifecycle_manifest,
             **report,
             "quality_status": "PASS" if not combined_reasons else "FAIL",
@@ -628,7 +695,15 @@ def main() -> int:
         print(f"report: {report_output}")
         return 0 if report["quality_status"] == "PASS" else 1
     except RepoFamilyError as exc:
-        report = failure_report(args, exc.reason, exc.details)
+        report = failure_report(
+            args,
+            exc.reason,
+            exc.details,
+            profile_path=profile_path,
+            profile_id=None if profile_contract is None else str(profile_contract["profile_id"]),
+            target_min_mb=None if profile_contract is None else int(profile_contract["target_min_mb"]),
+            hard_min_mb=None if profile_contract is None else int(profile_contract["hard_min_mb"]),
+        )
         write_json(report_output, report)
         print(f"quality_status: FAIL")
         print(f"report: {report_output}")

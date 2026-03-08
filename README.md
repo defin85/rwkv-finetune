@@ -341,6 +341,7 @@ Expected binidx data prefix from smoke:
 
 ```bash
 python scripts/build_repo_family_trusted_corpus.py \
+  --profile configs/dataset/1c-expert-v4.profile.json \
   --family-manifest /path/to/repo-family.manifest.json \
   --train-output data/raw/repo_family_train.jsonl \
   --dev-output data/raw/repo_family_dev.jsonl \
@@ -369,11 +370,13 @@ python scripts/build_repo_family_trusted_corpus.py \
 Builder:
 
 - рассматривает sibling-репозитории как один `source family`;
+- принимает в trusted `v1` только BSL snapshot/history surface;
 - канонизирует snapshot по `canonical_snapshot_root`;
 - исключает `.epf`-связанные BSL-модули из trusted `v1`;
 - строит `history_method_change` только из локализуемых git-коммитов;
 - формирует `core/onec_bsl` sample с русским `user_prompt`;
 - выносит поздние history changes в `dev/eval` и удаляет exact/near duplicates из train;
+- пишет в report `target_min_mb` и `deficit_to_target_min_mb` из общего dataset profile;
 - блокирует релиз, если `attained_unique_volume_mb < hard_min_mb`.
 
 ## Albatross inference

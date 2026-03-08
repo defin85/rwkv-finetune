@@ -1,6 +1,6 @@
 ## 1. Контракты source family и trust boundary
 - [x] 1.1 Зафиксировать `repo_family_manifest` для локального 1C source family: `source_family_id`, `repo_roots[]`, `canonical_snapshot_root`, `training_permission`, `usage_policy`, `license/origin_ref`.
-- [x] 1.2 Зафиксировать допустимые trusted sample-классы v1 и явные exclusion rules для synthetic/LLM-enriched sample.
+- [x] 1.2 Зафиксировать допустимые trusted sample-классы v1 как BSL-only `snapshot_method` и `history_method_change`, плюс явные exclusion rules для synthetic/LLM-enriched sample.
 - [x] 1.3 Зафиксировать исключение `.epf`-связанных BSL-модулей из trusted v1.
 - [x] 1.4 Зафиксировать fail-closed правила при отсутствии manifest, permission или provenance.
 
@@ -18,11 +18,11 @@
 - [x] 4.1 Зафиксировать historical split policy для одного source family: sibling repos MUST NOT использоваться как независимые split boundaries.
 - [x] 4.2 Зафиксировать, что для первого релиза temporal/lineage split + near-dedup обязателен, а отдельный task-family holdout не требуется.
 - [x] 4.3 Зафиксировать exact/near dedup и leakage checks между snapshot/history/train/dev/eval слоями.
-- [x] 4.4 Зафиксировать release-report по `attained_unique_volume_mb`, overlap/conflict статистике и deficit относительно target.
+- [x] 4.4 Зафиксировать release-report по `attained_unique_volume_mb`, overlap/conflict статистике и deficit относительно `target_min_mb` из общего dataset profile.
 - [x] 4.5 Зафиксировать hard minimum gate для trusted repo-family release и fail-closed поведение ниже порога.
 
 ## 5. Интеграция с текущей dataset-стратегией
-- [x] 5.1 Зафиксировать, как trusted repo-family corpus попадает в `core`/`onec_bsl` контур, не ломая существующие provenance и quality gates.
+- [x] 5.1 Зафиксировать, как trusted repo-family corpus попадает в `core`/`onec_bsl` контур как BSL-only источник, не ломая существующие provenance и quality gates.
 - [x] 5.2 Зафиксировать зависимость и границы с `add-1c-multisource-corpus-assembly`, чтобы локальный repo family не дублировал общий ingest-контур.
 - [x] 5.3 Зафиксировать, что реализация pilot release не использует final holdout для обучения и не добивает размер synthetic filler-данными.
 

@@ -19,12 +19,11 @@
 - Фиксируются детерминированные trusted sample-классы первого релиза:
   - snapshot-derived sample из текущих BSL-модулей;
   - history-derived sample из локализуемых git-изменений в BSL;
-  - metadata-linked context из локальных `conf_files`, если он извлекается без LLM-обогащения.
 - Фиксируется, что `.epf`-связанные BSL-модули не входят в trusted contour v1.
 - Фиксируются правила overlap detection и канонизации между sibling-репозиториями одного source family до расчёта объёма.
 - Фиксируется historical split policy: sibling-репозитории одного family MUST NOT считаться независимыми границами train/dev/eval.
 - Фиксируется baseline split policy первого релиза: temporal/lineage split + near-dedup обязателен, отдельный holdout по task families не требуется.
-- Фиксируется честный volume policy: trusted release MUST считать только уникальный объём после dedup, MUST удовлетворять обязательному hard minimum и MUST NOT добивать размер synthetic filler-данными.
+- Фиксируется честный volume policy: trusted release MUST считать только уникальный объём после dedup, MUST брать target из общего dataset profile, MUST удовлетворять обязательному hard minimum и MUST NOT добивать размер synthetic filler-данными.
 
 ## Impact
 - Affected specs:

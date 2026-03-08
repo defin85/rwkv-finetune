@@ -12,11 +12,14 @@
     - `training_permission`
     - `usage_policy`
     - `license`/`origin_ref` policy
+  - общий dataset profile:
+    - `profile_id`
+    - `volume.target_min_mb`
+    - `volume.hard_min_mb`
   - локальные git-репозитории 1С с доступной историей;
-  - локальные `conf_files`/metadata snapshot, если они входят в source family.
 - Outputs:
   - trusted 1C corpus release в каноническом sample-контракте;
-  - release-report с полями overlap, conflict, unique volume, split lineage и deficit относительно target;
+  - release-report с полями overlap, conflict, unique volume, split lineage и deficit относительно `volume.target_min_mb` из общего dataset profile;
   - machine-readable manifest по каждому sample и по family-level release.
 - Invariants:
   - sibling-репозитории одного source family не считаются независимыми источниками при split;
@@ -46,7 +49,6 @@
   - Допустимые классы:
     - `snapshot_method`
     - `history_method_change`
-    - `metadata_linked_context`, если он строится без LLM-перефразирования.
   - Исключения:
     - `.epf`-связанные BSL-модули не входят в trusted contour v1.
   - Rationale: это сохраняет доверие к target-содержимому и provenance.
@@ -67,6 +69,7 @@
   - Rationale: на старте достаточно temporal/lineage split + near-dedup контроля; дополнительный task-family holdout усложняет intake без достаточной пользы для v1.
 
 - Decision: Целевой объём trusted release считать как `attained_unique_volume`, а не добивать synthetic filler до красивой цифры.
+  - Деталь: желаемый target берётся из общего dataset profile (`volume.target_min_mb`), а не задаётся отдельным ad hoc параметром builder.
   - Rationale: для trusted contour важнее честная уникальность корпуса, чем номинальный размер.
   - Alternatives considered:
     - Жёстко требовать `1 GB` в trusted contour любой ценой: ведёт к скрытому раздуванию дубликатами или synthetic sample.

@@ -4,7 +4,7 @@
 Система MUST относить к trusted/core контуру только deterministic sample, извлечённые из локального 1C source family без LLM-generated semantic enrichment.
 
 #### Scenario: Детерминированный snapshot/history sample
-- **WHEN** sample построен из snapshot BSL, локализуемого history diff или metadata-linked context без модельного перефразирования
+- **WHEN** sample построен из snapshot BSL или локализуемого history diff без модельного перефразирования
 - **THEN** sample MUST быть допустим для trusted/core контура при наличии полного provenance
 
 #### Scenario: Sample требует LLM-generated paraphrase или explanation
@@ -30,7 +30,7 @@
 Система MUST считать объём trusted корпуса по уникальным sample после exact/near dedup и overlap canonicalization и MUST NOT добивать целевой объём synthetic filler-данными.
 
 #### Scenario: Уникальный trusted объём ниже целевого target
-- **WHEN** `attained_unique_volume_mb` после dedup ниже желаемого target, но выше обязательного hard minimum
+- **WHEN** `attained_unique_volume_mb` после dedup ниже `volume.target_min_mb` общего dataset profile, но выше обязательного hard minimum
 - **THEN** система MUST публиковать release-report с явным дефицитом объёма и MAY продолжать pipeline без synthetic padding
 
 #### Scenario: Попытка добить trusted release synthetic filler-данными
