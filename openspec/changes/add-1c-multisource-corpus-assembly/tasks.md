@@ -1,27 +1,27 @@
 ## 1. Контракты источников и schema
-- [ ] 1.1 Зафиксировать поддерживаемые форматы входа для трёх источников (`config export`, `syntax helper export`, `kb.1ci snapshot`) и правила валидации входных путей.
-- [ ] 1.2 Зафиксировать обязательные provenance/license поля и канонический sample-контракт `user_prompt` / `assistant_response` + metadata на уровне merged core corpus и release-manifest.
-- [ ] 1.3 Зафиксировать fail-closed поведение при отсутствии обязательного источника или неполной метаинформации.
+- [x] 1.1 Зафиксировать поддерживаемые форматы входа для трёх источников (`config export`, `syntax helper export`, `kb.1ci snapshot`) и правила валидации входных путей.
+- [x] 1.2 Зафиксировать обязательные provenance/license поля и канонический sample-контракт `user_prompt` / `assistant_response` + metadata на уровне merged core corpus и release-manifest.
+- [x] 1.3 Зафиксировать fail-closed поведение при отсутствии обязательного источника или неполной метаинформации.
 
 ## 2. Адаптеры извлечения данных
-- [ ] 2.1 Реализовать адаптер извлечения процедур/функций из экспорта конфигурации 1C.
-- [ ] 2.2 Реализовать адаптер извлечения из выгрузки синтаксис-помощника в нормализованные sample.
-- [ ] 2.3 Реализовать адаптер извлечения из `kb.1ci.com` snapshot с доменной проверкой и фиксацией `origin_ref`.
+- [x] 2.1 Реализовать адаптер извлечения процедур/функций из экспорта конфигурации 1C.
+- [x] 2.2 Реализовать адаптер извлечения из выгрузки синтаксис-помощника в нормализованные sample.
+- [x] 2.3 Реализовать адаптер извлечения из `kb.1ci.com` snapshot с доменной проверкой и фиксацией `origin_ref`.
 
 ## 3. Нормализация и quality gates
-- [ ] 3.1 Реализовать унификацию всех трёх потоков в канонический `user_prompt` / `assistant_response` + metadata без profile-specific wire format на ingest-слое.
-- [ ] 3.2 Реализовать dedup для merged 1C core корпуса (exact + near) до этапа pre-mix.
-- [ ] 3.3 Реализовать gate объёма core корпуса (`300 MB .. 1 GB`) и отчёт причин блокировки.
+- [x] 3.1 Реализовать унификацию всех трёх потоков в канонический `user_prompt` / `assistant_response` + metadata без profile-specific wire format на ingest-слое.
+- [x] 3.2 Реализовать dedup для merged 1C core корпуса (exact + near) до этапа pre-mix.
+- [x] 3.3 Реализовать gate объёма core корпуса (`300 MB .. 1 GB`) и отчёт причин блокировки.
 
 ## 4. Интеграция с профилем 1C-Expert-v4
-- [ ] 4.1 Подключить merged 1C core корпус как источник сегмента `onec_bsl` в текущем профиле через профильный formatter/export adapter.
-- [ ] 4.2 Добавить отчёт по вкладу каждого источника (`config/syntax/kb`) в итоговый 1C core corpus.
-- [ ] 4.3 Добавить контроль, что profile-specific сериализация применяется после pre-mix handoff и не подменяет internal ingest contract merged core corpus.
+- [x] 4.1 Подключить merged 1C core корпус как источник сегмента `onec_bsl` в текущем профиле через профильный formatter/export adapter.
+- [x] 4.2 Добавить отчёт по вкладу каждого источника (`config/syntax/kb`) в итоговый 1C core corpus.
+- [x] 4.3 Добавить контроль, что profile-specific сериализация применяется после pre-mix handoff и не подменяет internal ingest contract merged core corpus.
 
 ## 5. Верификация и документация
-- [ ] 5.1 Добавить unit-тесты для парсеров каждого источника и для schema/provenance validation.
-- [ ] 5.2 Добавить integration smoke на сборку merged 1C core корпуса с отчётом quality gates.
-- [ ] 5.3 Обновить документацию по подготовке выгрузок, лицензированию и запуску сборки.
+- [x] 5.1 Добавить unit-тесты для парсеров каждого источника и для schema/provenance validation.
+- [x] 5.2 Добавить integration smoke на сборку merged 1C core корпуса с отчётом quality gates.
+- [x] 5.3 Обновить документацию по подготовке выгрузок, лицензированию и запуску сборки.
 
 ## 6. Зависимости выполнения
 - [ ] 6.1 Блок 1 MUST быть завершён до блоков 2-4.

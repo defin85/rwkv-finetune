@@ -232,6 +232,18 @@ python scripts/build_1c_expert_v4_dataset.py \
   --report-output data/raw/1c_expert_v4.release.report.json
 ```
 
+Либо через готовый merged core handoff:
+
+```bash
+python scripts/build_1c_expert_v4_dataset.py \
+  --profile configs/dataset/1c-expert-v4.profile.json \
+  --onec-core-jsonl data/raw/onec_multisource_core.jsonl \
+  --coding-jsonl /path/to/coding.jsonl \
+  --ru-jsonl /path/to/ru_identity.jsonl \
+  --output-text data/raw/1c_expert_v4_train.txt \
+  --report-output data/raw/1c_expert_v4.release.report.json
+```
+
 Для `coding_jsonl` / `ru_jsonl`:
 - baseline external sources должны совпадать с allowlist профиля;
 - если `metadata.source` не входит в allowlist для своего сегмента, row MUST содержать непустой `metadata.quality_rationale`, иначе builder завершится fail-closed.
@@ -250,7 +262,34 @@ Smoke-проверка:
 ./scripts/smoke_1c_expert_v4.sh
 ```
 
-## 12) Trusted local repo-family (1C)
+## 12) Multisource 1C core corpus
+
+- [ ] Есть `assembly_manifest` с тремя обязательными источниками: `config_export`, `syntax_helper_export`, `kb1c_snapshot`.
+- [ ] `config_export.path` указывает на локальную директорию `.bsl`.
+- [ ] `syntax_helper_export.path` указывает на локальный `.jsonl` с `title`, `description` и опционально `syntax`, `example`, `origin_ref`.
+- [ ] `kb1c_snapshot.path` указывает на локальный `.jsonl` с `title`, `content`, `origin_ref`.
+- [ ] Для `kb1c_snapshot` базовый и row-level `origin_ref` ограничены доменом `kb.1ci.com`.
+- [ ] Все строки нормализуются в canonical `user_prompt` / `assistant_response` + metadata с provenance/license.
+- [ ] Выполнен exact + near dedup до profile mix.
+- [ ] release-report содержит вклад `config_export` / `syntax_helper_export` / `kb1c_snapshot`.
+- [ ] merged core corpus находится в диапазоне `300 MB .. 1 GB` или явно использован test override.
+
+Команда сборки:
+
+```bash
+python scripts/build_1c_multisource_core_corpus.py \
+  --assembly-manifest /path/to/multisource.manifest.json \
+  --output-jsonl data/raw/onec_multisource_core.jsonl \
+  --report-output data/raw/onec_multisource_core.report.json
+```
+
+Smoke-проверка:
+
+```bash
+./scripts/smoke_multisource_onec_core.sh
+```
+
+## 13) Trusted local repo-family (1C)
 
 Если источник собирается из нескольких локальных git-репозиториев одной конфигурации:
 

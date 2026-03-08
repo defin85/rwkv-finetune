@@ -38,8 +38,15 @@
   - Rationale: это согласует change с `add-1c-dataset-strategy` и не смешивает source-ingestion с profile serialization.
 - Decision: Принять только локальные выгрузки/снимки как вход адаптеров.
   - Rationale: повышает воспроизводимость и снижает runtime-зависимость от внешних сайтов.
+- Decision: Для первого релиза поддерживать `syntax_helper_export` и `kb1c_snapshot` как локальные `.jsonl` выгрузки.
+  - Деталь:
+    - `syntax_helper_export` v1: `title`, `description`, опционально `syntax`, `example`, `origin_ref`;
+    - `kb1c_snapshot` v1: `title`, `content`, `origin_ref`.
+  - Rationale: это самый простой воспроизводимый contract для локального snapshot ingest без зависимости от внешнего crawler/runtime.
 - Decision: Для `kb`-контента применять доменную политику allowlist (`kb.1ci.com`) и фиксировать `origin_ref`.
   - Rationale: ограничение легитимного источника и контроль provenance.
+- Decision: Для `kb.1ci.com` и синтаксис-помощника в v1 допускать explanatory text как `assistant_response`, а не только code snippets.
+  - Rationale: это сохраняет полезный 1C-domain контекст внутри canonical contract и не требует profile-specific wire format на ingest-слое.
 - Decision: Ввести отдельный объёмный gate `300 MB .. 1 GB` для merged 1C core корпуса.
   - Rationale: соответствует целевому диапазону для практического дообучения перед полным mix.
 
@@ -59,6 +66,4 @@
 4. Обновить документацию и smoke-процедуру.
 
 ## Open Questions
-- Точный формат выгрузки синтаксис-помощника (JSON/XML/HTML/другое) для первого релиза.
-- Политика включения контента `kb.1ci.com`: только code-примеры или также объяснительные блоки.
-- Целевая доля вкладов `config/syntax/kb` внутри 1C core корпуса для v1.
+- Целевая доля вкладов `config/syntax/kb` внутри 1C core корпуса для v1: пока не фиксируется как hard gate и отражается только в report.

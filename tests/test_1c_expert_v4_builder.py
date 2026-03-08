@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from scripts.dataset_lifecycle import build_canonical_row
+
 
 class OneCExpertV4BuilderTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -142,7 +144,7 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
     def run_builder(
         self,
         workdir: Path,
-        bsl_root: Path,
+        bsl_root: Path | None,
         coding_jsonl: Path,
         ru_jsonl: Path,
         hard_min_mb: int,
@@ -151,6 +153,7 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
         bsl_license: str = "internal",
         bsl_origin_ref: str = "local://onec/unit",
         bsl_contour: str = "core",
+        onec_core_jsonl: Path | None = None,
     ) -> subprocess.CompletedProcess[str]:
         output_text = workdir / "release.txt"
         report = workdir / "release.report.json"
@@ -159,16 +162,6 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
             str(self.script),
             "--profile",
             str(self.profile),
-            "--bsl-root",
-            str(bsl_root),
-            "--bsl-source",
-            bsl_source,
-            "--bsl-license",
-            bsl_license,
-            "--bsl-origin-ref",
-            bsl_origin_ref,
-            "--bsl-contour",
-            bsl_contour,
             "--coding-jsonl",
             str(coding_jsonl),
             "--ru-jsonl",
@@ -182,6 +175,23 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
             "--hard-min-mb",
             str(hard_min_mb),
         ]
+        if onec_core_jsonl is not None:
+            command.extend(["--onec-core-jsonl", str(onec_core_jsonl)])
+        else:
+            command.extend(
+                [
+                    "--bsl-root",
+                    str(bsl_root),
+                    "--bsl-source",
+                    bsl_source,
+                    "--bsl-license",
+                    bsl_license,
+                    "--bsl-origin-ref",
+                    bsl_origin_ref,
+                    "--bsl-contour",
+                    bsl_contour,
+                ]
+            )
         return subprocess.run(command, cwd=self.repo_root, check=False, text=True, capture_output=True)
 
     def test_pipeline_passes_with_all_module_types_and_zero_hard_min(self):
@@ -354,6 +364,74 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
             )
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("invalid_metadata.license", result.stderr + result.stdout)
+
+    def test_pipeline_accepts_multisource_onec_core_jsonl_handoff(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            onec_core_jsonl = root / "onec_core.jsonl"
+            onec_rows = [
+                build_canonical_row(
+                    "Напиши процедуру для ОбщаяПроцедура в 1С.",
+                    "Процедура ОбщаяПроцедура()\n    Сообщить(\"common\");\nКонецПроцедуры\n",
+                    {
+                        "source": "local-config-export",
+                        "license": "internal",
+                        "origin_ref": "local://config-export#CommonModules/CommonModule.bsl",
+                        "contour": "core",
+                        "segment": "onec_bsl",
+                        "split": "train",
+                        "source_type": "config_export",
+                        "module_type": "common",
+                    },
+                ),
+                build_canonical_row(
+                    "Объясни синтаксис 1С для «Новый Запрос».",
+                    "Описание:\nСоздаёт объект запроса 1С.\n\nСинтаксис:\nЗапрос = Новый Запрос;",
+                    {
+                        "source": "local-syntax-helper",
+                        "license": "internal",
+                        "origin_ref": "local://syntax-helper-export#new-query",
+                        "contour": "core",
+                        "segment": "onec_bsl",
+                        "split": "train",
+                        "source_type": "syntax_helper_export",
+                        "module_type": "manager",
+                    },
+                ),
+                build_canonical_row(
+                    "Объясни материал 1С по теме «Работа с документами».",
+                    "Документы 1С поддерживают проведение и запись.",
+                    {
+                        "source": "kb.1ci.com",
+                        "license": "open",
+                        "origin_ref": "https://kb.1ci.com/example/documents",
+                        "contour": "core",
+                        "segment": "onec_bsl",
+                        "split": "train",
+                        "source_type": "kb1c_snapshot",
+                        "module_type": "object",
+                    },
+                ),
+            ]
+            onec_core_jsonl.write_text(
+                "\n".join(json.dumps(row, ensure_ascii=False) for row in onec_rows) + "\n",
+                encoding="utf-8",
+            )
+            coding, ru = self.write_canonical_jsonl_inputs(root)
+            result = self.run_builder(
+                root,
+                None,
+                coding,
+                ru,
+                hard_min_mb=0,
+                onec_core_jsonl=onec_core_jsonl,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr + "\n" + result.stdout)
+            text = (root / "release.txt").read_text(encoding="utf-8")
+            self.assertIn("Instruction: Объясни синтаксис 1С для", text)
+            self.assertIn("Instruction: Объясни материал 1С по теме", text)
+            report = json.loads((root / "release.report.json").read_text(encoding="utf-8"))
+            self.assertEqual(report["quality_status"], "PASS")
 
 
 if __name__ == "__main__":

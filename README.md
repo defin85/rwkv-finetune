@@ -310,6 +310,18 @@ python scripts/build_1c_expert_v4_dataset.py \
   --report-output data/raw/1c_expert_v4.release.report.json
 ```
 
+Если `onec_bsl` уже собран как merged canonical corpus, вместо `--bsl-root` можно передать:
+
+```bash
+python scripts/build_1c_expert_v4_dataset.py \
+  --profile configs/dataset/1c-expert-v4.profile.json \
+  --onec-core-jsonl data/raw/onec_multisource_core.jsonl \
+  --coding-jsonl /path/to/coding.jsonl \
+  --ru-jsonl /path/to/ru_identity.jsonl \
+  --output-text data/raw/1c_expert_v4_train.txt \
+  --report-output data/raw/1c_expert_v4.release.report.json
+```
+
 `coding-jsonl` и `ru-jsonl` должны резолвиться в canonical rows с валидными `source`, `license`, `origin_ref`, `contour` (`core|extended`) и русским `user_prompt`.
 Если `metadata.source` для сегментов `coding_general` / `ru_identity` не входит в baseline allowlist профиля, row обязан содержать непустой `metadata.quality_rationale`; иначе builder блокирует релиз fail-closed.
 
@@ -378,6 +390,69 @@ Builder:
 - выносит поздние history changes в `dev/eval` и удаляет exact/near duplicates из train;
 - пишет в report `target_min_mb` и `deficit_to_target_min_mb` из общего dataset profile;
 - блокирует релиз, если `attained_unique_volume_mb < hard_min_mb`.
+
+## Multisource 1C Core Builder
+
+Для merged `onec_bsl` core корпуса из `config export` + `syntax helper export` + `kb.1ci.com` snapshot используйте standalone builder:
+
+```bash
+python scripts/build_1c_multisource_core_corpus.py \
+  --assembly-manifest /path/to/multisource.manifest.json \
+  --output-jsonl data/raw/onec_multisource_core.jsonl \
+  --report-output data/raw/onec_multisource_core.report.json
+```
+
+Поддерживаемый v1 contract:
+
+- `config_export.path` -> локальная директория с `.bsl` файлами;
+- `syntax_helper_export.path` -> локальный `.jsonl` с полями `title`, `description` и опционально `syntax`, `example`, `origin_ref`;
+- `kb1c_snapshot.path` -> локальный `.jsonl` с полями `title`, `content`, `origin_ref`;
+- `kb1c_snapshot.origin_ref` и каждый row-level `origin_ref` для KB MUST быть в домене `kb.1ci.com`.
+
+Минимальный `assembly_manifest`:
+
+```json
+{
+  "dataset_name": "onec-multisource-core",
+  "dataset_version": "v0",
+  "sources": {
+    "config_export": {
+      "path": "/abs/path/to/config_export",
+      "source": "local-config-export",
+      "license": "internal",
+      "origin_ref": "local://config-export",
+      "contour": "core"
+    },
+    "syntax_helper_export": {
+      "path": "/abs/path/to/syntax.jsonl",
+      "source": "local-syntax-helper",
+      "license": "internal",
+      "origin_ref": "local://syntax-helper-export",
+      "contour": "core"
+    },
+    "kb1c_snapshot": {
+      "path": "/abs/path/to/kb.jsonl",
+      "source": "kb.1ci.com",
+      "license": "open",
+      "origin_ref": "https://kb.1ci.com/snapshot",
+      "contour": "core"
+    }
+  }
+}
+```
+
+Builder:
+
+- нормализует все три источника в canonical `user_prompt` / `assistant_response` + metadata;
+- делает exact + near dedup до profile mix;
+- пишет source contribution report (`config_export`, `syntax_helper_export`, `kb1c_snapshot`);
+- блокирует релиз, если merged core corpus вне диапазона `300 MB .. 1 GB` (или явно заданных test overrides).
+
+Smoke command (multisource ingest + profile handoff + `prepare_binidx.sh`):
+
+```bash
+./scripts/smoke_multisource_onec_core.sh
+```
 
 ## Albatross inference
 

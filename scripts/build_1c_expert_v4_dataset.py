@@ -62,7 +62,11 @@ def parse_args() -> argparse.Namespace:
         default="configs/dataset/1c-expert-v4.profile.json",
         help="Path to 1C-Expert-v4 profile JSON.",
     )
-    parser.add_argument("--bsl-root", required=True, help="Directory with .bsl source files.")
+    parser.add_argument("--bsl-root", help="Directory with .bsl source files.")
+    parser.add_argument(
+        "--onec-core-jsonl",
+        help="Canonical JSONL with merged onec_bsl core rows produced by multisource ingest.",
+    )
     parser.add_argument(
         "--coding-jsonl",
         required=True,
@@ -75,22 +79,22 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--bsl-source",
-        required=True,
+        default=None,
         help="Source id used for canonical onec_bsl rows generated from --bsl-root.",
     )
     parser.add_argument(
         "--bsl-license",
-        required=True,
+        default=None,
         help="License label used for canonical onec_bsl rows generated from --bsl-root.",
     )
     parser.add_argument(
         "--bsl-origin-ref",
-        required=True,
+        default=None,
         help="Base origin reference used for canonical onec_bsl rows generated from --bsl-root.",
     )
     parser.add_argument(
         "--bsl-contour",
-        required=True,
+        default=None,
         help="Contour label used for canonical onec_bsl rows generated from --bsl-root.",
     )
     parser.add_argument("--output-text", required=True, help="Output train text path.")
@@ -320,6 +324,30 @@ def load_onec_samples(
     return samples
 
 
+def load_onec_core_samples(path: Path) -> list[PreparedSample]:
+    rows = load_canonical_rows(path)
+    failures: list[str] = []
+    samples: list[PreparedSample] = []
+    for index, row in enumerate(rows, start=1):
+        reasons = validate_canonical_row(row)
+        if str(row["metadata"].get("segment", "")).strip() != "onec_bsl":
+            reasons.append("invalid_metadata.segment")
+        if reasons:
+            failures.append(f"{path}:{index}: {','.join(reasons)}")
+            continue
+        samples.append(
+            PreparedSample(
+                segment="onec_bsl",
+                source=str(row["metadata"]["source"]),
+                text=format_sample(row["user_prompt"], row["assistant_response"]),
+                metadata=dict(row["metadata"]),
+            )
+        )
+    if failures:
+        raise ValueError("\n".join(failures))
+    return samples
+
+
 def validate_profile(profile: dict[str, Any]) -> None:
     required_top = {"profile_id", "volume", "mix", "release_gates", "source_allowlist"}
     missing = sorted(required_top - set(profile))
@@ -412,6 +440,15 @@ def calculate_actual_mix(counts: dict[str, int]) -> dict[str, float]:
     return {key: round(counts[key] / total, 6) for key in SEGMENT_ORDER}
 
 
+def calculate_module_type_coverage(samples: list[PreparedSample]) -> dict[str, int]:
+    counts = {"common": 0, "manager": 0, "object": 0}
+    for sample in samples:
+        module_type = str(sample.metadata.get("module_type", "")).strip()
+        if module_type in counts:
+            counts[module_type] += 1
+    return counts
+
+
 def build_shuffle_report(samples: list[PreparedSample], seed: int) -> dict[str, Any]:
     segment_order = [sample.segment for sample in samples]
     preview = segment_order[: min(16, len(segment_order))]
@@ -436,7 +473,8 @@ def write_report(path: Path, report: dict[str, Any]) -> None:
 def main() -> int:
     args = parse_args()
     profile_path = Path(args.profile).resolve()
-    bsl_root = Path(args.bsl_root).resolve()
+    bsl_root = Path(args.bsl_root).resolve() if args.bsl_root else None
+    onec_core_jsonl = Path(args.onec_core_jsonl).resolve() if args.onec_core_jsonl else None
     coding_jsonl = Path(args.coding_jsonl).resolve()
     ru_jsonl = Path(args.ru_jsonl).resolve()
     output_text = Path(args.output_text).resolve()
@@ -446,15 +484,33 @@ def main() -> int:
     validate_profile(profile)
     source_allowlist = build_source_allowlist(profile)
 
-    methods = collect_onec_methods(bsl_root)
-    onec_samples = load_onec_samples(
-        methods,
-        bsl_root,
-        source=args.bsl_source,
-        license_name=args.bsl_license,
-        origin_ref=args.bsl_origin_ref,
-        contour=args.bsl_contour,
-    )
+    if onec_core_jsonl is not None:
+        if bsl_root is not None:
+            raise ValueError("Use either --bsl-root or --onec-core-jsonl, not both")
+        onec_samples = load_onec_core_samples(onec_core_jsonl)
+    else:
+        missing = [
+            flag
+            for flag, value in (
+                ("--bsl-root", bsl_root),
+                ("--bsl-source", args.bsl_source),
+                ("--bsl-license", args.bsl_license),
+                ("--bsl-origin-ref", args.bsl_origin_ref),
+                ("--bsl-contour", args.bsl_contour),
+            )
+            if value is None
+        ]
+        if missing:
+            raise ValueError(f"Missing required BSL input arguments: {', '.join(missing)}")
+        methods = collect_onec_methods(bsl_root)
+        onec_samples = load_onec_samples(
+            methods,
+            bsl_root,
+            source=str(args.bsl_source),
+            license_name=str(args.bsl_license),
+            origin_ref=str(args.bsl_origin_ref),
+            contour=str(args.bsl_contour),
+        )
     coding_samples = load_segment_samples(
         coding_jsonl,
         expected_segment="coding_general",
@@ -486,11 +542,7 @@ def main() -> int:
     format_stats = validate_sample_format([sample.text for sample in mixed])
     mix_reasons = validate_mix(counts, profile["mix"])
     actual_mix = calculate_actual_mix(counts)
-    module_type_counts = {
-        "common": sum(1 for row in methods if row.module_type == "common"),
-        "manager": sum(1 for row in methods if row.module_type == "manager"),
-        "object": sum(1 for row in methods if row.module_type == "object"),
-    }
+    module_type_counts = calculate_module_type_coverage(onec_samples)
     shuffle_report = build_shuffle_report(mixed, args.seed)
 
     reasons: list[str] = []
