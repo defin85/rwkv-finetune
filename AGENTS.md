@@ -43,7 +43,10 @@ OpenSpec creates a change folder (`openspec/changes/<change-id>/`) containing:
 
 **Agent Goal**: Edit these files until they represent a signable contract.
 
-**DO NOT proceed to step 2 until you are explicitly told the keyword "Go!" in English.**
+**DO NOT proceed to step 2 until approval is explicit.**
+Explicit approval can be either:
+- the keyword `Go!` in English while discussing the approved change; or
+- a direct invocation of `/openspec-to-beads <change-id>`, which counts as an explicit request to start Stage 2.
 
 ## 2. Task Transformation
 
