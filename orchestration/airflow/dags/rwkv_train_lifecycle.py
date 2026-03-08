@@ -83,6 +83,9 @@ def _dag_conf(context: dict[str, Any]) -> dict[str, Any]:
     )
     hard_cases_path = _conf_or_env(conf, "hard_cases_path", str(RUNS_DIR / run_name / "hard_cases.json"))
     train_wrapper = _conf_or_env(conf, "train_wrapper", DEFAULT_TRAIN_WRAPPER)
+    eval_model_path = _conf_or_env(conf, "eval_model_path", "")
+    domain_eval_jsonl = _conf_or_env(conf, "domain_eval_jsonl", "")
+    retention_eval_jsonl = _conf_or_env(conf, "retention_eval_jsonl", "")
     return {
         "run_name": run_name,
         "input_jsonl": _conf_or_env(conf, "input_jsonl", DEFAULT_INPUT_JSONL),
@@ -94,8 +97,13 @@ def _dag_conf(context: dict[str, Any]) -> dict[str, Any]:
         "train_wrapper": train_wrapper,
         "dataset_manifest": _conf_or_env(conf, "dataset_manifest", DEFAULT_DATASET_MANIFEST),
         "dataset_quality_status": _conf_or_env(conf, "dataset_quality_status", "PASS").upper(),
-        "domain_eval_verdict": _conf_or_env(conf, "domain_eval_verdict", "PASS").upper(),
-        "retention_eval_verdict": _conf_or_env(conf, "retention_eval_verdict", "PASS").upper(),
+        "domain_eval_verdict": _conf_or_env(conf, "domain_eval_verdict", "").upper(),
+        "retention_eval_verdict": _conf_or_env(conf, "retention_eval_verdict", "").upper(),
+        "eval_model_path": eval_model_path,
+        "domain_eval_jsonl": domain_eval_jsonl,
+        "retention_eval_jsonl": retention_eval_jsonl,
+        "eval_inference_script": _conf_or_env(conf, "eval_inference_script", str(SCRIPTS_DIR / "infer_albatross.py")),
+        "eval_tokens": _conf_or_env(conf, "eval_tokens", "128"),
         "domain_categories_path": domain_categories_path,
         "retention_categories_path": retention_categories_path,
         "hard_cases_path": hard_cases_path,
@@ -305,6 +313,76 @@ def train_adapter(**context: Any) -> None:
     _write_audit(context, "train_adapter", "validated", {"run_dir": str(run_dir)})
 
 
+def produce_eval_artifacts(**context: Any) -> None:
+    conf = _dag_conf(context)
+    _require_fields(
+        conf,
+        [
+            "run_name",
+            "eval_model_path",
+            "domain_eval_jsonl",
+            "retention_eval_jsonl",
+            "eval_inference_script",
+            "domain_categories_path",
+            "retention_categories_path",
+            "hard_cases_path",
+        ],
+        "produce_eval_artifacts",
+    )
+    run_dir = RUNS_DIR / conf["run_name"]
+    if not run_dir.is_dir():
+        raise AirflowFailException(f"run_dir not found before eval artifact production: {run_dir}")
+
+    for field in ("eval_model_path", "domain_eval_jsonl", "retention_eval_jsonl", "eval_inference_script"):
+        path = Path(conf[field])
+        if not path.is_file():
+            raise AirflowFailException(f"produce_eval_artifacts: missing required file for {field}: {path}")
+
+    command = [
+        sys.executable,
+        str(SCRIPTS_DIR / "produce_eval_artifacts.py"),
+        "--run-name",
+        conf["run_name"],
+        "--run-dir",
+        str(run_dir),
+        "--model",
+        conf["eval_model_path"],
+        "--domain-eval-jsonl",
+        conf["domain_eval_jsonl"],
+        "--retention-eval-jsonl",
+        conf["retention_eval_jsonl"],
+        "--domain-output",
+        conf["domain_categories_path"],
+        "--retention-output",
+        conf["retention_categories_path"],
+        "--hard-cases-output",
+        conf["hard_cases_path"],
+        "--inference-script",
+        conf["eval_inference_script"],
+        "--tokens",
+        conf["eval_tokens"],
+    ]
+    _run_shell(context, "produce_eval_artifacts", command)
+
+    artifacts = {
+        "domain_categories_path": Path(conf["domain_categories_path"]),
+        "retention_categories_path": Path(conf["retention_categories_path"]),
+        "hard_cases_path": Path(conf["hard_cases_path"]),
+    }
+    missing = [name for name, path in artifacts.items() if not path.is_file()]
+    if missing:
+        reason = f"Expected eval artifacts not found: {', '.join(missing)}"
+        _write_audit(context, "produce_eval_artifacts", "failed_artifact_validation", {"reason": reason})
+        raise AirflowFailException(reason)
+
+    _write_audit(
+        context,
+        "produce_eval_artifacts",
+        "validated",
+        {name: str(path) for name, path in artifacts.items()},
+    )
+
+
 def evaluate_adapter(**context: Any) -> None:
     conf = _dag_conf(context)
     _require_fields(
@@ -322,10 +400,6 @@ def evaluate_adapter(**context: Any) -> None:
         str(SCRIPTS_DIR / "evaluate_adapter.sh"),
         "--run-name",
         conf["run_name"],
-        "--domain-verdict",
-        conf["domain_eval_verdict"],
-        "--retention-verdict",
-        conf["retention_eval_verdict"],
         "--domain-categories",
         conf["domain_categories_path"],
         "--retention-categories",
@@ -335,6 +409,10 @@ def evaluate_adapter(**context: Any) -> None:
         "--output",
         conf["eval_summary_path"],
     ]
+    if conf["domain_eval_verdict"]:
+        command.extend(["--domain-verdict", conf["domain_eval_verdict"]])
+    if conf["retention_eval_verdict"]:
+        command.extend(["--retention-verdict", conf["retention_eval_verdict"]])
     _run_shell(context, "evaluate_adapter", command)
 
     summary_path = Path(conf["eval_summary_path"])
@@ -424,7 +502,10 @@ with DAG(
     schedule=None,
     catchup=False,
     tags=["rwkv", "airflow", "training"],
-    description="RWKV training lifecycle DAG: prepare_dataset -> train_adapter -> evaluate_adapter -> release_adapter",
+    description=(
+        "RWKV training lifecycle DAG: prepare_dataset -> train_adapter -> "
+        "produce_eval_artifacts -> evaluate_adapter -> release_adapter"
+    ),
 ) as dag:
     prepare_dataset_task = PythonOperator(
         task_id="prepare_dataset",
@@ -439,6 +520,12 @@ with DAG(
     train_adapter_task = PythonOperator(
         task_id="train_adapter",
         python_callable=train_adapter,
+        pool=GPU_POOL_NAME,
+    )
+
+    produce_eval_artifacts_task = PythonOperator(
+        task_id="produce_eval_artifacts",
+        python_callable=produce_eval_artifacts,
         pool=GPU_POOL_NAME,
     )
 
@@ -459,4 +546,5 @@ with DAG(
     )
 
     prepare_dataset_task >> check_dataset_quality_task >> train_adapter_task
-    train_adapter_task >> evaluate_adapter_task >> check_eval_gates_task >> release_adapter_task
+    train_adapter_task >> produce_eval_artifacts_task >> evaluate_adapter_task
+    evaluate_adapter_task >> check_eval_gates_task >> release_adapter_task

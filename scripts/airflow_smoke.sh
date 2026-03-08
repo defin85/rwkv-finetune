@@ -81,6 +81,9 @@ RELEASE_MANIFEST="$ROOT_DIR/runs/$RUN_NAME/release_manifest.json"
 DOMAIN_CATEGORIES="$ROOT_DIR/runs/$RUN_NAME/domain_eval.categories.json"
 RETENTION_CATEGORIES="$ROOT_DIR/runs/$RUN_NAME/retention_eval.categories.json"
 HARD_CASES="$ROOT_DIR/runs/$RUN_NAME/hard_cases.json"
+DOMAIN_EVAL_JSONL="$SMOKE_ROOT/domain_eval.jsonl"
+RETENTION_EVAL_JSONL="$SMOKE_ROOT/retention_eval.jsonl"
+EVAL_INFERENCE_SCRIPT="$SMOKE_ROOT/stub_infer.py"
 LOGICAL_DATE="$(date -u +%Y-%m-%dT%H:%M:%S)"
 SMOKE_REPORT="$SMOKE_ROOT/smoke_report.json"
 
@@ -98,34 +101,58 @@ EOF
 
 printf "smoke model placeholder\n" >"$MODEL_PLACEHOLDER"
 
-python - "$DOMAIN_CATEGORIES" "$RETENTION_CATEGORIES" "$HARD_CASES" <<'PY'
+python - "$DOMAIN_EVAL_JSONL" "$RETENTION_EVAL_JSONL" "$EVAL_INFERENCE_SCRIPT" <<'PY'
 import json
 import sys
+from pathlib import Path
 
-domain_categories, retention_categories, hard_cases = sys.argv[1:4]
-payloads = {
-    domain_categories: {
-        "code_generation": {
-            "verdict": "PASS",
-            "score": 0.81,
-            "samples_total": 4,
-            "failures_total": 0,
-        }
-    },
-    retention_categories: {
-        "ru_general": {
-            "verdict": "PASS",
-            "score": 0.79,
-            "samples_total": 3,
-            "failures_total": 0,
-        }
-    },
-    hard_cases: [],
-}
-for path, payload in payloads.items():
+domain_eval_jsonl, retention_eval_jsonl, inference_script = sys.argv[1:4]
+
+domain_rows = [
+    {
+        "text": "User: дай практический алгоритм: прочитать регистр накопления в 1С.\nAssistant: В задаче 'прочитать регистр накопления' зафиксируй предусловия, затем используй типизированные проверки до обращения к полям. Для 'регистр накопления' используй минимальный набор измерений в отборе."
+    }
+]
+retention_rows = [
+    {
+        "text": "User: как лучше разделить тесты для CLI-утилиты?\nAssistant: Когда нужно 'разделить тесты для CLI-утилиты', начни с чёткого критерия успеха, затем отдели быстрые unit от медленных интеграционных. Для случая 'для CLI-утилиты' проверь коды выхода и текст ошибок."
+    }
+]
+
+for path, rows in [(domain_eval_jsonl, domain_rows), (retention_eval_jsonl, retention_rows)]:
     with open(path, "w", encoding="utf-8") as fh:
-        json.dump(payload, fh, ensure_ascii=True, indent=2)
-        fh.write("\n")
+        for row in rows:
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+Path(inference_script).write_text(
+    """#!/usr/bin/env python3
+import argparse
+import json
+from pathlib import Path
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--model", required=True)
+parser.add_argument("--prompt", required=True)
+parser.add_argument("--output-json", required=True)
+parser.add_argument("--tokens", type=int, default=0)
+args = parser.parse_args()
+
+prompt = args.prompt
+if "прочитать регистр накопления" in prompt:
+    completion = "В задаче 'прочитать регистр накопления' зафиксируй предусловия, затем используй типизированные проверки до обращения к полям. Для 'регистр накопления' используй минимальный набор измерений в отборе."
+else:
+    completion = "Когда нужно 'разделить тесты для CLI-утилиты', начни с чёткого критерия успеха, затем отдели быстрые unit от медленных интеграционных. Для случая 'для CLI-утилиты' проверь коды выхода и текст ошибок."
+
+payload = {
+    "model": args.model,
+    "prompt": args.prompt,
+    "samples": [{"index": 0, "completion": completion}],
+}
+Path(args.output_json).write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+""",
+    encoding="utf-8",
+)
+Path(inference_script).chmod(0o755)
 PY
 
 python "$ROOT_DIR/scripts/check_dataset_quality.py" \
@@ -139,7 +166,7 @@ python "$ROOT_DIR/scripts/check_dataset_quality.py" \
   --max-qwen-negative-rows 1 \
   --strict
 
-python - "$CONF_JSON" "$INPUT_JSONL" "$DATASET_MANIFEST" "$OUTPUT_PREFIX" "$DATA_PREFIX" "$MODEL_PLACEHOLDER" "$RUN_NAME" "$EVAL_SUMMARY" "$RELEASE_MANIFEST" "$DOMAIN_CATEGORIES" "$RETENTION_CATEGORIES" "$HARD_CASES" <<'PY'
+python - "$CONF_JSON" "$INPUT_JSONL" "$DATASET_MANIFEST" "$OUTPUT_PREFIX" "$DATA_PREFIX" "$MODEL_PLACEHOLDER" "$RUN_NAME" "$EVAL_SUMMARY" "$RELEASE_MANIFEST" "$DOMAIN_CATEGORIES" "$RETENTION_CATEGORIES" "$HARD_CASES" "$DOMAIN_EVAL_JSONL" "$RETENTION_EVAL_JSONL" "$EVAL_INFERENCE_SCRIPT" <<'PY'
 import json
 import sys
 
@@ -156,7 +183,10 @@ import sys
     domain_categories,
     retention_categories,
     hard_cases,
-) = sys.argv[1:13]
+    domain_eval_jsonl,
+    retention_eval_jsonl,
+    eval_inference_script,
+) = sys.argv[1:16]
 
 payload = {
     "input_jsonl": input_jsonl,
@@ -166,9 +196,12 @@ payload = {
     "load_model": model_placeholder,
     "run_name": run_name,
     "train_wrapper": "scripts/train_smoke_stub.sh",
+    "eval_model_path": model_placeholder,
+    "domain_eval_jsonl": domain_eval_jsonl,
+    "retention_eval_jsonl": retention_eval_jsonl,
+    "eval_inference_script": eval_inference_script,
+    "eval_tokens": "32",
     "dataset_quality_status": "PASS",
-    "domain_eval_verdict": "PASS",
-    "retention_eval_verdict": "PASS",
     "domain_categories_path": domain_categories,
     "retention_categories_path": retention_categories,
     "hard_cases_path": hard_cases,
@@ -218,10 +251,19 @@ else
   echo "Primary smoke path failed, running wrapper fallback smoke."
   ./scripts/prepare_binidx.sh "$INPUT_JSONL" "$OUTPUT_PREFIX"
   ./scripts/train_smoke_stub.sh --load-model "$MODEL_PLACEHOLDER" --data-prefix "$DATA_PREFIX" --run-name "$RUN_NAME"
+  python ./scripts/produce_eval_artifacts.py \
+    --run-name "$RUN_NAME" \
+    --run-dir "$ROOT_DIR/runs/$RUN_NAME" \
+    --model "$MODEL_PLACEHOLDER" \
+    --domain-eval-jsonl "$DOMAIN_EVAL_JSONL" \
+    --retention-eval-jsonl "$RETENTION_EVAL_JSONL" \
+    --domain-output "$DOMAIN_CATEGORIES" \
+    --retention-output "$RETENTION_CATEGORIES" \
+    --hard-cases-output "$HARD_CASES" \
+    --inference-script "$EVAL_INFERENCE_SCRIPT" \
+    --tokens 32
   ./scripts/evaluate_adapter.sh \
     --run-name "$RUN_NAME" \
-    --domain-verdict PASS \
-    --retention-verdict PASS \
     --domain-categories "$DOMAIN_CATEGORIES" \
     --retention-categories "$RETENTION_CATEGORIES" \
     --hard-cases "$HARD_CASES" \
@@ -262,6 +304,9 @@ EXPECTED=(
   "${DATA_PREFIX}.bin"
   "${DATA_PREFIX}.idx"
   "$ROOT_DIR/runs/$RUN_NAME/train_smoke_stub.json"
+  "$DOMAIN_CATEGORIES"
+  "$RETENTION_CATEGORIES"
+  "$HARD_CASES"
   "$EVAL_SUMMARY"
   "$RELEASE_MANIFEST"
   "$ROOT_DIR/runs/$RUN_NAME/gates/dataset_quality_gate.json"

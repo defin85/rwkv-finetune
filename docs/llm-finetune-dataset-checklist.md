@@ -165,6 +165,7 @@ python scripts/build_dataset_v0_report.py \
 ```
 
 - [ ] `eval_summary.json` содержит `domain_eval.categories`, `retention_eval.categories` и `hard_cases`.
+- [ ] `scripts/produce_eval_artifacts.py` генерирует category artifacts и `hard_cases` из реальных `domain_eval_jsonl` / `retention_eval_jsonl`.
 - [ ] `scripts/evaluate_adapter.sh` собирает summary из machine-readable runtime artifacts, а не только из verdict flags.
 
 Для `scripts/build_1c_expert_v4_dataset.py`:
@@ -198,6 +199,9 @@ CLI-триггер с конфигом:
 - [ ] Валидный `dataset_manifest`
 - [ ] Правильный `train_wrapper`
 - [ ] Базовый `.pth` существует и указан в `load_model`
+- [ ] `eval_model_path` указывает на inference-ready checkpoint для eval шага текущего run.
+- [ ] Указаны отдельные `domain_eval_jsonl` и `retention_eval_jsonl`.
+- [ ] Если используется не штатный inference path, задан `eval_inference_script`.
 
 ## 10) Критерии приёмки обучения
 

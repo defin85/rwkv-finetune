@@ -270,7 +270,20 @@ python scripts/build_dataset_v0_report.py \
 - `retention_eval.categories`
 - `hard_cases`
 
-Airflow/DAG smoke генерирует example artifacts в `runs/<run_name>/domain_eval.categories.json`, `runs/<run_name>/retention_eval.categories.json` и `runs/<run_name>/hard_cases.json`, а `evaluate_adapter.sh` собирает из них machine-readable summary.
+Runtime producer для этих артефактов:
+
+```bash
+python scripts/produce_eval_artifacts.py \
+  --run-name example \
+  --model /path/to/inference-ready-checkpoint.pth \
+  --domain-eval-jsonl data/raw/domain_eval.jsonl \
+  --retention-eval-jsonl data/raw/retention_eval.jsonl \
+  --domain-output runs/example/domain_eval.categories.json \
+  --retention-output runs/example/retention_eval.categories.json \
+  --hard-cases-output runs/example/hard_cases.json
+```
+
+Airflow/DAG и `airflow_smoke.sh` теперь используют тот же runtime path: `produce_eval_artifacts.py` генерирует `runs/<run_name>/domain_eval.categories.json`, `runs/<run_name>/retention_eval.categories.json` и `runs/<run_name>/hard_cases.json`, а `evaluate_adapter.sh` только собирает из них machine-readable summary.
 
 Reference smoke artifact:
 

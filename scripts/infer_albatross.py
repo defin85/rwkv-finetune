@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import random
 import subprocess
 import sys
@@ -69,6 +70,11 @@ def parse_args() -> argparse.Namespace:
         "--auto-clone",
         action="store_true",
         help="Clone Albatross automatically if directory is missing.",
+    )
+    parser.add_argument(
+        "--output-json",
+        default="",
+        help="Optional path to write structured inference output as JSON.",
     )
     return parser.parse_args()
 
@@ -173,11 +179,30 @@ def main() -> int:
         print(f"Decode done: {args.tokens} tokens/seq, {tps:.2f} tok/s total")
 
     print()
+    payload = {
+        "model": str(Path(model_prefix + ".pth")),
+        "prompt": args.prompt,
+        "tokens": args.tokens,
+        "batch": args.batch,
+        "samples": [],
+    }
     for i in range(args.batch):
         completion = tokenizer.decode(generated_tokens[i], utf8_errors="ignore")
+        payload["samples"].append(
+            {
+                "index": i,
+                "completion": completion,
+                "text": prompts[i] + completion,
+            }
+        )
         print(f"[sample {i}]")
         print(prompts[i] + completion)
         print("-" * 80)
+
+    if args.output_json:
+        output_path = Path(args.output_json).expanduser().resolve()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     return 0
 

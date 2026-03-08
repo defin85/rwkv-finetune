@@ -79,6 +79,12 @@ def normalize_category_summaries(payload: Any, suite_name: str) -> dict[str, dic
     return normalized
 
 
+def derive_verdict_from_categories(payload: Any, suite_name: str) -> str:
+    categories = normalize_category_summaries(payload, suite_name)
+    verdicts = {item["verdict"] for item in categories.values()}
+    return "PASS" if verdicts == {"PASS"} else "FAIL"
+
+
 def normalize_eval_section(section_name: str, payload: Any) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError(f"{section_name}.expected_object")
@@ -118,20 +124,28 @@ def overall_verdict(domain_verdict: str, retention_verdict: str) -> str:
 
 def build_eval_summary(
     run_name: str,
-    domain_verdict: str,
-    retention_verdict: str,
+    domain_verdict: str | None,
+    retention_verdict: str | None,
     domain_categories: dict[str, Any],
     retention_categories: dict[str, Any],
     hard_cases: list[dict[str, Any]],
     created_at: str | None = None,
 ) -> dict[str, Any]:
+    normalized_domain_verdict = domain_verdict or derive_verdict_from_categories(
+        domain_categories,
+        "domain_eval",
+    )
+    normalized_retention_verdict = retention_verdict or derive_verdict_from_categories(
+        retention_categories,
+        "retention_eval",
+    )
     normalized_domain = normalize_eval_section(
         "domain_eval",
-        {"verdict": domain_verdict, "categories": domain_categories},
+        {"verdict": normalized_domain_verdict, "categories": domain_categories},
     )
     normalized_retention = normalize_eval_section(
         "retention_eval",
-        {"verdict": retention_verdict, "categories": retention_categories},
+        {"verdict": normalized_retention_verdict, "categories": retention_categories},
     )
     return {
         "schema_version": 1,

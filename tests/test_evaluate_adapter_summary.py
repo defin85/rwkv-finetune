@@ -107,6 +107,83 @@ class EvaluateAdapterSummaryTests(unittest.TestCase):
             self.assertEqual(summary["domain_eval"]["categories"]["code_generation"]["samples_total"], 12)
             self.assertEqual(summary["hard_cases"][0]["suite"], "domain_eval")
 
+    def test_evaluate_adapter_derives_verdicts_from_category_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            run_name = "unit-eval-derived"
+            run_dir = self.repo_root / "runs" / run_name
+            run_dir.mkdir(parents=True, exist_ok=True)
+            output = root / "eval_summary.json"
+            domain_categories = root / "domain_categories.json"
+            retention_categories = root / "retention_categories.json"
+            hard_cases = root / "hard_cases.json"
+
+            domain_categories.write_text(
+                json.dumps(
+                    {
+                        "code_generation": {
+                            "verdict": "PASS",
+                            "score": 1.0,
+                            "samples_total": 2,
+                            "failures_total": 0,
+                        },
+                        "refactoring": {
+                            "verdict": "FAIL",
+                            "score": 0.0,
+                            "samples_total": 1,
+                            "failures_total": 1,
+                        },
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            retention_categories.write_text(
+                json.dumps(
+                    {
+                        "ru_general": {
+                            "verdict": "PASS",
+                            "score": 1.0,
+                            "samples_total": 1,
+                            "failures_total": 0,
+                        }
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            hard_cases.write_text("[]\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [
+                    str(self.script),
+                    "--run-name",
+                    run_name,
+                    "--domain-categories",
+                    str(domain_categories),
+                    "--retention-categories",
+                    str(retention_categories),
+                    "--hard-cases",
+                    str(hard_cases),
+                    "--output",
+                    str(output),
+                ],
+                cwd=self.repo_root,
+                check=False,
+                text=True,
+                capture_output=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stderr + "\n" + result.stdout)
+            summary = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(summary["domain_eval"]["verdict"], "FAIL")
+            self.assertEqual(summary["retention_eval"]["verdict"], "PASS")
+            self.assertEqual(summary["overall_verdict"], "FAIL")
+
 
 if __name__ == "__main__":
     unittest.main()

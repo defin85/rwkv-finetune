@@ -4,8 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 RUN_NAME=""
-DOMAIN_VERDICT="PASS"
-RETENTION_VERDICT="PASS"
+DOMAIN_VERDICT=""
+RETENTION_VERDICT=""
 DOMAIN_CATEGORIES=""
 RETENTION_CATEGORIES=""
 HARD_CASES=""
@@ -66,21 +66,25 @@ if [ -z "$RUN_NAME" ] || [ -z "$DOMAIN_CATEGORIES" ] || [ -z "$RETENTION_CATEGOR
   exit 1
 fi
 
-case "$DOMAIN_VERDICT" in
-  PASS|FAIL) ;;
-  *)
-    echo "Invalid --domain-verdict: $DOMAIN_VERDICT (expected PASS|FAIL)" >&2
-    exit 1
-    ;;
-esac
+if [ -n "$DOMAIN_VERDICT" ]; then
+  case "$DOMAIN_VERDICT" in
+    PASS|FAIL) ;;
+    *)
+      echo "Invalid --domain-verdict: $DOMAIN_VERDICT (expected PASS|FAIL)" >&2
+      exit 1
+      ;;
+  esac
+fi
 
-case "$RETENTION_VERDICT" in
-  PASS|FAIL) ;;
-  *)
-    echo "Invalid --retention-verdict: $RETENTION_VERDICT (expected PASS|FAIL)" >&2
-    exit 1
-    ;;
-esac
+if [ -n "$RETENTION_VERDICT" ]; then
+  case "$RETENTION_VERDICT" in
+    PASS|FAIL) ;;
+    *)
+      echo "Invalid --retention-verdict: $RETENTION_VERDICT (expected PASS|FAIL)" >&2
+      exit 1
+      ;;
+  esac
+fi
 
 RUN_DIR="$ROOT_DIR/runs/$RUN_NAME"
 if [ ! -d "$RUN_DIR" ]; then
@@ -111,8 +115,8 @@ from eval_summary_contract import build_eval_summary, read_json_file
 
 payload = build_eval_summary(
     run_name=run_name,
-    domain_verdict=domain_verdict,
-    retention_verdict=retention_verdict,
+    domain_verdict=domain_verdict or None,
+    retention_verdict=retention_verdict or None,
     domain_categories=read_json_file(domain_categories_path),
     retention_categories=read_json_file(retention_categories_path),
     hard_cases=read_json_file(hard_cases_path),

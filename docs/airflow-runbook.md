@@ -62,10 +62,15 @@ grep -n '^ORCHESTRATION_PROFILE=' configs/workspace.env
   "output_prefix": "/home/egor/code/rwkv-finetune/data/processed/identity_hotfix_v4",
   "data_prefix": "/home/egor/code/rwkv-finetune/data/processed/identity_hotfix_v4_text_document",
   "load_model": "/home/egor/code/rwkv-finetune/models/base/rwkv7-g1-0.4b-20250324-ctx4096.pth",
+  "eval_model_path": "/home/egor/code/rwkv-finetune/models/base/rwkv7-g1-0.4b-20250324-ctx4096.pth",
+  "domain_eval_jsonl": "/home/egor/code/rwkv-finetune/data/raw/identity_hotfix_v4_eval.jsonl",
+  "retention_eval_jsonl": "/home/egor/code/rwkv-finetune/data/raw/identity_hotfix_v3_eval.jsonl",
   "run_name": "identity-hotfix-v4-001",
   "train_wrapper": "/home/egor/code/rwkv-finetune/scripts/train_qlora_nf4_identity_v4.sh"
 }
 ```
+
+`eval_model_path` MUST указывать на inference-ready checkpoint для текущего eval шага. Если нужен нестандартный backend инференса, дополнительно передайте `eval_inference_script`; иначе по умолчанию используется `scripts/infer_albatross.py`.
 
 2. Триггернуть DAG:
 

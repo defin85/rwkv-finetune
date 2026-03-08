@@ -17,7 +17,11 @@ bash -n \
   scripts/train_smoke_stub.sh \
   scripts/train.sh
 
-python -m py_compile orchestration/airflow/dags/rwkv_train_lifecycle.py
+python -m py_compile \
+  orchestration/airflow/dags/rwkv_train_lifecycle.py \
+  scripts/produce_eval_artifacts.py \
+  scripts/infer_albatross.py \
+  scripts/eval_summary_contract.py
 python -m unittest discover -s tests -p "test_*.py"
 
 if command -v airflow >/dev/null 2>&1; then
