@@ -134,7 +134,17 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
         return coding, ru
 
     def run_builder(
-        self, workdir: Path, bsl_root: Path, coding_jsonl: Path, ru_jsonl: Path, hard_min_mb: int
+        self,
+        workdir: Path,
+        bsl_root: Path,
+        coding_jsonl: Path,
+        ru_jsonl: Path,
+        hard_min_mb: int,
+        *,
+        bsl_source: str = "unit-test-bsl",
+        bsl_license: str = "internal",
+        bsl_origin_ref: str = "local://onec/unit",
+        bsl_contour: str = "core",
     ) -> subprocess.CompletedProcess[str]:
         output_text = workdir / "release.txt"
         report = workdir / "release.report.json"
@@ -145,6 +155,14 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
             str(self.profile),
             "--bsl-root",
             str(bsl_root),
+            "--bsl-source",
+            bsl_source,
+            "--bsl-license",
+            bsl_license,
+            "--bsl-origin-ref",
+            bsl_origin_ref,
+            "--bsl-contour",
+            bsl_contour,
             "--coding-jsonl",
             str(coding_jsonl),
             "--ru-jsonl",
@@ -246,6 +264,24 @@ class OneCExpertV4BuilderTests(unittest.TestCase):
                 coding_metadata_overrides=({"license": "unknown"}, None),
             )
             result = self.run_builder(root, bsl_root, coding, ru, hard_min_mb=0)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("invalid_metadata.license", result.stderr + result.stdout)
+
+    def test_pipeline_fails_closed_on_invalid_onec_bsl_provenance_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            bsl_root = root / "onec"
+            bsl_root.mkdir(parents=True, exist_ok=True)
+            self.write_bsl_modules(bsl_root, include_manager=True)
+            coding, ru = self.write_canonical_jsonl_inputs(root)
+            result = self.run_builder(
+                root,
+                bsl_root,
+                coding,
+                ru,
+                hard_min_mb=0,
+                bsl_license="unknown",
+            )
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("invalid_metadata.license", result.stderr + result.stdout)
 

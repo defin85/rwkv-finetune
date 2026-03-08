@@ -17,7 +17,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from dataset_lifecycle import load_canonical_rows, validate_canonical_row
+from dataset_lifecycle import build_canonical_row, load_canonical_rows, validate_canonical_row
 
 
 METHOD_PATTERN = re.compile(
@@ -63,6 +63,26 @@ def parse_args() -> argparse.Namespace:
         "--ru-jsonl",
         required=True,
         help="JSONL with RU identity/chat samples resolvable to canonical rows with valid provenance metadata.",
+    )
+    parser.add_argument(
+        "--bsl-source",
+        required=True,
+        help="Source id used for canonical onec_bsl rows generated from --bsl-root.",
+    )
+    parser.add_argument(
+        "--bsl-license",
+        required=True,
+        help="License label used for canonical onec_bsl rows generated from --bsl-root.",
+    )
+    parser.add_argument(
+        "--bsl-origin-ref",
+        required=True,
+        help="Base origin reference used for canonical onec_bsl rows generated from --bsl-root.",
+    )
+    parser.add_argument(
+        "--bsl-contour",
+        required=True,
+        help="Contour label used for canonical onec_bsl rows generated from --bsl-root.",
     )
     parser.add_argument("--output-text", required=True, help="Output train text path.")
     parser.add_argument("--report-output", required=True, help="Output release report JSON path.")
@@ -140,10 +160,34 @@ def format_sample(instruction: str, response: str) -> str:
     return f"Instruction: {inst}\n\nResponse: {resp}\n{EOT_TOKEN}\n"
 
 
-def onec_method_to_sample(method: OneCMethod) -> str:
+def onec_method_to_canonical_row(
+    method: OneCMethod,
+    bsl_root: Path,
+    *,
+    source: str,
+    license_name: str,
+    origin_ref: str,
+    contour: str,
+) -> dict[str, Any]:
     suffix = "процедуру" if method.kind == "Процедура" else "функцию"
-    instruction = f"Напиши {suffix} для {method.name} в 1С."
-    return format_sample(instruction, method.body)
+    module_relpath = Path(method.module_path).resolve().relative_to(bsl_root.resolve()).as_posix()
+    return build_canonical_row(
+        user_prompt=f"Напиши {suffix} для {method.name} в 1С.",
+        assistant_response=method.body,
+        metadata={
+            "source": source,
+            "license": license_name,
+            "origin_ref": f"{origin_ref}#{module_relpath}",
+            "origin_base_ref": origin_ref,
+            "origin_relpath": module_relpath,
+            "contour": contour,
+            "segment": "onec_bsl",
+            "split": "train",
+            "module_type": method.module_type,
+            "method_name": method.name,
+            "category": "code_generation",
+        },
+    )
 
 
 def parse_instruction_output(payload: dict[str, Any]) -> tuple[str, str]:
@@ -171,6 +215,36 @@ def load_segment_samples(path: Path) -> list[str]:
         reasons = validate_canonical_row(row)
         if reasons:
             failures.append(f"{path}:{index}: {','.join(reasons)}")
+            continue
+        samples.append(format_sample(row["user_prompt"], row["assistant_response"]))
+    if failures:
+        raise ValueError("\n".join(failures))
+    return samples
+
+
+def load_onec_samples(
+    methods: list[OneCMethod],
+    bsl_root: Path,
+    *,
+    source: str,
+    license_name: str,
+    origin_ref: str,
+    contour: str,
+) -> list[str]:
+    failures: list[str] = []
+    samples: list[str] = []
+    for method in methods:
+        row = onec_method_to_canonical_row(
+            method,
+            bsl_root,
+            source=source,
+            license_name=license_name,
+            origin_ref=origin_ref,
+            contour=contour,
+        )
+        reasons = validate_canonical_row(row)
+        if reasons:
+            failures.append(f"{method.module_path}:{method.name}: {','.join(reasons)}")
             continue
         samples.append(format_sample(row["user_prompt"], row["assistant_response"]))
     if failures:
@@ -278,7 +352,14 @@ def main() -> int:
     validate_profile(profile)
 
     methods = collect_onec_methods(bsl_root)
-    onec_samples = [onec_method_to_sample(row) for row in methods]
+    onec_samples = load_onec_samples(
+        methods,
+        bsl_root,
+        source=args.bsl_source,
+        license_name=args.bsl_license,
+        origin_ref=args.bsl_origin_ref,
+        contour=args.bsl_contour,
+    )
     coding_samples = load_segment_samples(coding_jsonl)
     ru_samples = load_segment_samples(ru_jsonl)
     available = {

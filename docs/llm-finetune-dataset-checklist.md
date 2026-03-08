@@ -168,8 +168,9 @@ python scripts/build_dataset_v0_report.py \
 - [ ] `scripts/evaluate_adapter.sh` собирает summary из machine-readable runtime artifacts, а не только из verdict flags.
 
 Для `scripts/build_1c_expert_v4_dataset.py`:
+- [ ] `bsl-root` передаёт явный provenance contract через `--bsl-source/--bsl-license/--bsl-origin-ref/--bsl-contour`.
 - [ ] `coding-jsonl` и `ru-jsonl` проходят lifecycle validation до profile serialization.
-- [ ] Builder блокируется на non-RU prompt или невалидном provenance metadata.
+- [ ] Builder блокируется на non-RU prompt или невалидном provenance metadata для всех сегментов, включая `onec_bsl`.
 
 Команда генерации identity-набора:
 
@@ -216,6 +217,10 @@ CLI-триггер с конфигом:
 python scripts/build_1c_expert_v4_dataset.py \
   --profile configs/dataset/1c-expert-v4.profile.json \
   --bsl-root /path/to/onec/configuration \
+  --bsl-source local-bsl-tree \
+  --bsl-license internal \
+  --bsl-origin-ref local://onec/configuration \
+  --bsl-contour core \
   --coding-jsonl /path/to/coding.jsonl \
   --ru-jsonl /path/to/ru_identity.jsonl \
   --output-text data/raw/1c_expert_v4_train.txt \

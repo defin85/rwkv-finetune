@@ -49,6 +49,10 @@ printf '%s\n' \
 python "$ROOT_DIR/scripts/build_1c_expert_v4_dataset.py" \
   --profile "$ROOT_DIR/configs/dataset/1c-expert-v4.profile.json" \
   --bsl-root "$BSL_ROOT" \
+  --bsl-source "smoke-test-bsl" \
+  --bsl-license "internal" \
+  --bsl-origin-ref "local://smoke/onec" \
+  --bsl-contour "core" \
   --coding-jsonl "$CODING_JSONL" \
   --ru-jsonl "$RU_JSONL" \
   --output-text "$TRAIN_TEXT" \

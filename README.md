@@ -287,13 +287,19 @@ Builder command (produces plain text `Instruction/Response + <|endoftext|>` and 
 python scripts/build_1c_expert_v4_dataset.py \
   --profile configs/dataset/1c-expert-v4.profile.json \
   --bsl-root /path/to/onec/configuration \
+  --bsl-source local-bsl-tree \
+  --bsl-license internal \
+  --bsl-origin-ref local://onec/configuration \
+  --bsl-contour core \
   --coding-jsonl /path/to/coding.jsonl \
   --ru-jsonl /path/to/ru_identity.jsonl \
   --output-text data/raw/1c_expert_v4_train.txt \
   --report-output data/raw/1c_expert_v4.release.report.json
 ```
 
-`coding-jsonl` и `ru-jsonl` должны резолвиться в canonical rows с валидными `source`, `license`, `origin_ref`, `contour` (`core|extended`) и русским `user_prompt`; profile builder теперь fail-closed на нарушении этого contract.
+`coding-jsonl` и `ru-jsonl` должны резолвиться в canonical rows с валидными `source`, `license`, `origin_ref`, `contour` (`core|extended`) и русским `user_prompt`.
+
+Для `--bsl-root` provenance теперь задаётся явно через `--bsl-source`, `--bsl-license`, `--bsl-origin-ref`, `--bsl-contour`; builder сначала преобразует BSL-методы в canonical `onec_bsl` rows, а потом выполняет profile serialization. Profile builder fail-closed на нарушении этого contract для всех сегментов, включая `onec_bsl`.
 
 Output report includes:
 
